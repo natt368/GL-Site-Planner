@@ -128,29 +128,27 @@ async function startServer() {
       if (fs.existsSync(excelPath)) {
         const { generateBinDatabase } = await import("./scripts/parseExcel.js");
         const binSpecs = generateBinDatabase();
-        return res.json({ success: true, count: binSpecs.length, data: binSpecs });
+        if (binSpecs && binSpecs.length > 0) {
+          return res.json({ success: true, count: binSpecs.length, data: binSpecs });
+        }
       }
-      
-      // Fallback to bundled JSON
+    } catch (err: any) {
+      console.error("Error serving bin specs from Excel:", err.message);
+    }
+
+    // Fallback to bundled JSON
+    try {
       const jsonPath = path.resolve(process.cwd(), "src/data/excelBinDatabase.json");
       if (fs.existsSync(jsonPath)) {
         const jsonContent = fs.readFileSync(jsonPath, "utf-8");
         const binSpecs = JSON.parse(jsonContent);
         return res.json({ success: true, count: binSpecs.length, data: binSpecs });
       }
-      return res.status(404).json({ success: false, error: "Specs database not found" });
-    } catch (err: any) {
-      console.error("Error serving bin specs:", err);
-      try {
-        const jsonPath = path.resolve(process.cwd(), "src/data/excelBinDatabase.json");
-        if (fs.existsSync(jsonPath)) {
-          const jsonContent = fs.readFileSync(jsonPath, "utf-8");
-          const binSpecs = JSON.parse(jsonContent);
-          return res.json({ success: true, count: binSpecs.length, data: binSpecs });
-        }
-      } catch (e) {}
-      res.status(500).json({ success: false, error: err.message });
+    } catch (e: any) {
+      console.error("Error reading fallback JSON specs:", e.message);
     }
+
+    return res.status(404).json({ success: false, error: "Specs database not found" });
   });
 
   // Get current git status

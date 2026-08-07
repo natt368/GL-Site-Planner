@@ -134,9 +134,11 @@ export function generateBinDatabase() {
   return allModels;
 }
 
-// Save JSON database
-const data = generateBinDatabase();
-console.log(`Successfully parsed ${data.length} bin models from Excel!`);
-const outputPath = path.resolve('src/data/excelBinDatabase.json');
-fs.writeFileSync(outputPath, JSON.stringify(data, null, 2));
-console.log(`Saved JSON database to ${outputPath}`);
+// Save JSON database when executed directly
+if (process.argv[1] && (process.argv[1].includes('parseExcel') || process.argv[1].endsWith('parseExcel.js'))) {
+  const data = generateBinDatabase();
+  console.log(`Successfully parsed ${data.length} bin models from Excel!`);
+  const outputPath = path.resolve('src/data/excelBinDatabase.json');
+  fs.writeFileSync(outputPath, JSON.stringify(data, null, 2));
+  console.log(`Saved JSON database to ${outputPath}`);
+}

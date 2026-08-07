@@ -226,18 +226,22 @@ export default function App() {
   };
 
   const getNavFromLocation = (): { showLanding: boolean; activeTab: 'dashboard' | 'planner' | 'estimator' | 'binSpecs' } => {
-    const hash = window.location.hash.replace('#', '').toLowerCase();
-    if (hash === 'dashboard') return { showLanding: false, activeTab: 'dashboard' };
-    if (hash === 'planner' || hash === 'site-planner') return { showLanding: false, activeTab: 'planner' };
-    if (hash === 'estimator' || hash === 'cable-estimator') return { showLanding: false, activeTab: 'estimator' };
-    if (hash === 'binspecs' || hash === 'bin-specs') return { showLanding: false, activeTab: 'binSpecs' };
-    if (hash === 'landing' || hash === 'home') return { showLanding: true, activeTab: 'dashboard' };
+    try {
+      const hash = window.location.hash ? window.location.hash.replace('#', '').toLowerCase() : '';
+      if (hash === 'dashboard') return { showLanding: false, activeTab: 'dashboard' };
+      if (hash === 'planner' || hash === 'site-planner') return { showLanding: false, activeTab: 'planner' };
+      if (hash === 'estimator' || hash === 'cable-estimator') return { showLanding: false, activeTab: 'estimator' };
+      if (hash === 'binspecs' || hash === 'bin-specs') return { showLanding: false, activeTab: 'binSpecs' };
+      if (hash === 'landing' || hash === 'home') return { showLanding: true, activeTab: 'dashboard' };
 
-    if (window.history.state && typeof window.history.state.showLanding === 'boolean') {
-      return {
-        showLanding: window.history.state.showLanding,
-        activeTab: window.history.state.activeTab || 'dashboard',
-      };
+      if (window.history && window.history.state && typeof window.history.state.showLanding === 'boolean') {
+        return {
+          showLanding: window.history.state.showLanding,
+          activeTab: window.history.state.activeTab || 'dashboard',
+        };
+      }
+    } catch (e) {
+      console.warn("Location state reading skipped:", e);
     }
 
     return { showLanding: true, activeTab: 'dashboard' };
@@ -250,47 +254,63 @@ export default function App() {
       setActiveTab(nextTab);
     }
 
-    const hash = getHashForNav(nextShowLanding, targetTab);
-    const targetState = { showLanding: nextShowLanding, activeTab: targetTab };
+    try {
+      const hash = getHashForNav(nextShowLanding, targetTab);
+      const targetState = { showLanding: nextShowLanding, activeTab: targetTab };
 
-    const currentHash = window.location.hash;
-    const currentState = window.history.state;
+      const currentHash = window.location.hash;
+      const currentState = window.history ? window.history.state : null;
 
-    if (
-      currentHash !== hash ||
-      !currentState ||
-      currentState.showLanding !== nextShowLanding ||
-      currentState.activeTab !== targetTab
-    ) {
-      window.history.pushState(targetState, '', hash);
+      if (
+        currentHash !== hash ||
+        !currentState ||
+        currentState.showLanding !== nextShowLanding ||
+        currentState.activeTab !== targetTab
+      ) {
+        if (window.history && typeof window.history.pushState === 'function') {
+          window.history.pushState(targetState, '', hash);
+        }
+      }
+    } catch (e) {
+      console.warn("pushState unavailable:", e);
     }
   }, [activeTab]);
 
   // Synchronize browser history and handle browser Back / Forward (popstate)
   useEffect(() => {
-    const initialNav = getNavFromLocation();
-    setShowLanding(initialNav.showLanding);
-    setActiveTab(initialNav.activeTab);
+    try {
+      const initialNav = getNavFromLocation();
+      setShowLanding(initialNav.showLanding);
+      setActiveTab(initialNav.activeTab);
 
-    const initialHash = getHashForNav(initialNav.showLanding, initialNav.activeTab);
-    window.history.replaceState(
-      { showLanding: initialNav.showLanding, activeTab: initialNav.activeTab },
-      '',
-      initialHash
-    );
+      const initialHash = getHashForNav(initialNav.showLanding, initialNav.activeTab);
+      if (window.history && typeof window.history.replaceState === 'function') {
+        window.history.replaceState(
+          { showLanding: initialNav.showLanding, activeTab: initialNav.activeTab },
+          '',
+          initialHash
+        );
+      }
+    } catch (e) {
+      console.warn("replaceState unavailable on mount:", e);
+    }
 
     const handlePopState = (e: PopStateEvent) => {
-      let nav: { showLanding: boolean; activeTab: 'dashboard' | 'planner' | 'estimator' | 'binSpecs' };
-      if (e.state && typeof e.state.showLanding === 'boolean') {
-        nav = {
-          showLanding: e.state.showLanding,
-          activeTab: e.state.activeTab || 'dashboard',
-        };
-      } else {
-        nav = getNavFromLocation();
+      try {
+        let nav: { showLanding: boolean; activeTab: 'dashboard' | 'planner' | 'estimator' | 'binSpecs' };
+        if (e && e.state && typeof e.state.showLanding === 'boolean') {
+          nav = {
+            showLanding: e.state.showLanding,
+            activeTab: e.state.activeTab || 'dashboard',
+          };
+        } else {
+          nav = getNavFromLocation();
+        }
+        setShowLanding(nav.showLanding);
+        setActiveTab(nav.activeTab);
+      } catch (err) {
+        console.warn("popstate handler fallback:", err);
       }
-      setShowLanding(nav.showLanding);
-      setActiveTab(nav.activeTab);
     };
 
     window.addEventListener('popstate', handlePopState);

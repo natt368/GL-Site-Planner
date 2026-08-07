@@ -1,0 +1,2690 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+import { Project, Yard, Asset, BinAsset, MarkerAsset, ZoneAsset, BinSpecModel } from '../types';
+import { getCableRecommendation } from '../utils/pdfGenerator';
+import { BIN_DATABASE } from '../data/binDatabase';
+import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search } from 'lucide-react';
+
+interface SitePlannerViewProps {
+  project: Project;
+  onUpdateProject: (updater: (prev: Project) => Project) => void;
+  onSwitchTab: (tabId: 'dashboard' | 'planner' | 'estimator' | 'binSpecs') => void;
+  onSelectBinInEstimator: (binId: number) => void;
+  selectedAssetId: number | null;
+  onSelectAsset: (assetId: number | null) => void;
+}
+
+const GRID_SIZE = 5;
+const VISUAL_GRID_MAJOR = 50;
+const BASE_SCALE = 3.0;
+const BIN_SIZES = [18, 24, 30, 36, 42, 48, 50];
+
+function escapeRegExp(str: string) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
+  project,
+  onUpdateProject,
+  onSwitchTab,
+  onSelectBinInEstimator,
+  selectedAssetId,
+  onSelectAsset,
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Canvas size state
+  const [dimensions, setDimensions] = useState({ width: 600, height: 600 });
+
+  // Navigation view state (zoom/pan)
+  const [view, setView] = useState({ x: 0, y: 0, scale: 1.0 });
+
+  // Snap to Grid toggling state
+  const [snapToGrid, setSnapToGrid] = useState<boolean>(true);
+
+  // Snap to Object toggling state
+  const [snapToObject, setSnapToObject] = useState<boolean>(true);
+
+  // Hovered bin state for tooltip info
+  const [hoveredBin, setHoveredBin] = useState<any | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
+
+  // State for creating wire connections
+  const [wiringState, setWiringState] = useState<{
+    active: boolean;
+    fromAssetId: number | null;
+    toAssetId: number | null;
+    showLabelInput?: boolean;
+    tempLabel?: string;
+  } | null>(null);
+
+  const [mouseWorldPos, setMouseWorldPos] = useState<{ x: number; y: number } | null>(null);
+  const [hoveredWireId, setHoveredWireId] = useState<number | null>(null);
+
+  // Multi-selection states
+  const [selectionMode, setSelectionMode] = useState<'select' | 'pan'>('pan');
+  const [selectedAssetIds, setSelectedAssetIds] = useState<number[]>([]);
+  const [selectionBox, setSelectionBox] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  } | null>(null);
+
+  // Dragging / Interaction state
+  const dragInfoRef = useRef<{
+    active: boolean;
+    offset: { x: number; y: number };
+    startWorldPos?: { x: number; y: number };
+    startPositions?: { id: number; x: number; y: number }[];
+  }>({ active: false, offset: { x: 0, y: 0 } });
+
+  const panInfoRef = useRef<{
+    active: boolean;
+    start: { x: number; y: number };
+  }>({ active: false, start: { x: 0, y: 0 } });
+
+  const resizeInfoRef = useRef<{
+    active: boolean;
+    anchorX?: number;
+    anchorY?: number;
+  }>({ active: false });
+
+  const activeYard = useMemo(() => {
+    return project.yards.find((y) => y.id === project.activeYardId) || project.yards[0];
+  }, [project.yards, project.activeYardId]);
+
+  const selectedAsset = useMemo(() => {
+    if (!activeYard || selectedAssetId === null) return null;
+    return activeYard.bins.find((b) => b.id === selectedAssetId) || null;
+  }, [activeYard, selectedAssetId]);
+
+  // Model search / autocompletion states
+  const [addBinSearchText, setAddBinSearchText] = useState<string>('');
+  const [isAddBinSuggestionsOpen, setIsAddBinSuggestionsOpen] = useState<boolean>(false);
+  const [propModelSearchText, setPropModelSearchText] = useState<string>('');
+  const [isPropModelSuggestionsOpen, setIsPropModelSuggestionsOpen] = useState<boolean>(false);
+
+  // Sync property panel model search text when selected asset changes
+  useEffect(() => {
+    if (selectedAsset && selectedAsset.type === 'bin') {
+      setPropModelSearchText((selectedAsset as BinAsset).modelNumber || '');
+    } else {
+      setPropModelSearchText('');
+    }
+    setIsPropModelSuggestionsOpen(false);
+  }, [selectedAssetId]);
+
+  // Model suggestion calculator
+  const getModelSuggestions = useCallback((query: string, limit: number = 8, preferredMfg?: string) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const cleanQ = q.replace(/[^a-z0-9]/g, '');
+    const pMfg = (preferredMfg || '').trim().toLowerCase();
+
+    const matches: { model: BinSpecModel; score: number }[] = [];
+
+    for (const m of BIN_DATABASE) {
+      const modLower = m.modelNumber.toLowerCase();
+      const fullLower = m.fullName.toLowerCase();
+      const mfgLower = m.manufacturer.toLowerCase();
+      const mfgModLower = `${m.manufacturer} ${m.modelNumber}`.toLowerCase();
+      const cleanMod = modLower.replace(/[^a-z0-9]/g, '');
+
+      let score = 0;
+      if (modLower === q || fullLower === q || mfgModLower === q) {
+        score = 100;
+      } else if (modLower.startsWith(q)) {
+        score = 85;
+      } else if (mfgModLower.startsWith(q) || fullLower.startsWith(q)) {
+        score = 75;
+      } else if (cleanQ.length >= 2 && cleanMod.startsWith(cleanQ)) {
+        score = 65;
+      } else if (modLower.includes(q)) {
+        score = 50;
+      } else if (mfgModLower.includes(q) || fullLower.includes(q)) {
+        score = 40;
+      } else if (cleanQ.length >= 2 && cleanMod.includes(cleanQ)) {
+        score = 30;
+      }
+
+      if (score > 0) {
+        if (pMfg && (mfgLower === pMfg || mfgLower.includes(pMfg) || pMfg.includes(mfgLower))) {
+          score += 50;
+        }
+        matches.push({ model: m, score });
+      }
+    }
+
+    matches.sort((a, b) => b.score - a.score || a.model.diameterFt - b.model.diameterFt);
+
+    const uniqueMap = new Map<string, BinSpecModel>();
+    for (const item of matches) {
+      const key = `${item.model.manufacturer}-${item.model.modelNumber}`;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, item.model);
+      }
+      if (uniqueMap.size >= limit) break;
+    }
+
+    return Array.from(uniqueMap.values());
+  }, []);
+
+  const addBinSuggestions = useMemo(() => {
+    return getModelSuggestions(addBinSearchText, 8);
+  }, [addBinSearchText, getModelSuggestions]);
+
+  const propModelSuggestions = useMemo(() => {
+    const mfg = selectedAsset && selectedAsset.type === 'bin' ? (selectedAsset as BinAsset).manufacturer : '';
+    return getModelSuggestions(propModelSearchText, 8, mfg);
+  }, [propModelSearchText, selectedAsset, getModelSuggestions]);
+
+  // Synchronize with external selectedAssetId
+  useEffect(() => {
+    if (selectedAssetId === null) {
+      if (selectedAssetIds.length <= 1) {
+        setSelectedAssetIds([]);
+      }
+    } else {
+      if (!selectedAssetIds.includes(selectedAssetId)) {
+        setSelectedAssetIds([selectedAssetId]);
+      }
+    }
+  }, [selectedAssetId]);
+
+  // Helper helper function to change selected IDs
+  const handleSetSelectedAssetIds = (ids: number[]) => {
+    setSelectedAssetIds(ids);
+    if (ids.length === 1) {
+      onSelectAsset(ids[0]);
+    } else if (ids.length > 1) {
+      // Keep selectedAssetId as the last one so the properties panel still functions for it
+      onSelectAsset(ids[ids.length - 1]);
+    } else {
+      onSelectAsset(null);
+    }
+  };
+
+  // Track resizing of container
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      if (!entries || entries.length === 0) return;
+      const { width, height } = entries[0].contentRect;
+      setDimensions({ width, height });
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Helper coordinate conversion
+  const screenToWorld = (sx: number, sy: number) => {
+    return {
+      x: (sx - view.x) / view.scale,
+      y: (sy - view.y) / view.scale,
+    };
+  };
+
+  // Keyboard Shortcuts defined below after event handlers
+
+  // Canvas Drawing loop
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear and draw background
+    ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(0, 0, dimensions.width, dimensions.height);
+
+    if (!activeYard) return;
+
+    ctx.save();
+    ctx.translate(view.x, view.y);
+    ctx.scale(view.scale, view.scale);
+
+    const left = -view.x / view.scale;
+    const top = -view.y / view.scale;
+    const right = left + dimensions.width / view.scale;
+    const bottom = top + dimensions.height / view.scale;
+
+    // Draw Grid Lines
+    ctx.strokeStyle = '#27272a';
+    ctx.lineWidth = 1 / view.scale;
+    for (let x = Math.floor(left / VISUAL_GRID_MAJOR) * VISUAL_GRID_MAJOR; x < right; x += VISUAL_GRID_MAJOR) {
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
+      ctx.stroke();
+    }
+    for (let y = Math.floor(top / VISUAL_GRID_MAJOR) * VISUAL_GRID_MAJOR; y < bottom; y += VISUAL_GRID_MAJOR) {
+      ctx.beginPath();
+      ctx.moveTo(left, y);
+      ctx.lineTo(right, y);
+      ctx.stroke();
+    }
+
+    // Draw Snap Alignment Lines
+    if (snapToObject && dragInfoRef.current.active && selectedAssetId !== null && selectedAsset) {
+      activeYard.bins.forEach((b) => {
+        if (b.id === selectedAssetId) return;
+
+        // Check X alignment (with safe tolerance for floating point comparisons)
+        if (Math.abs(selectedAsset.x - b.x) < 0.1) {
+          ctx.beginPath();
+          ctx.moveTo(b.x, top);
+          ctx.lineTo(b.x, bottom);
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)'; // Amber/Gold guidelines matching the yard styling
+          ctx.lineWidth = 1.5 / view.scale;
+          ctx.setLineDash([6, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Draw helper circle indicator around aligned target object to emphasize connection
+          const isZone = b.type === 'zone';
+          const defaultDia = (b.type === 'junction-box' || b.type === 'fan-control') ? 6 : 5;
+          const dia = parseFloat((b as any).diameter) || defaultDia;
+          const radius = isZone ? 0 : (dia / 2) * BASE_SCALE;
+          if (!isZone) {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, radius + 5 / view.scale, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+            ctx.lineWidth = 1 / view.scale;
+            ctx.stroke();
+          }
+        }
+
+        // Check Y alignment (with safe tolerance for floating point comparisons)
+        if (Math.abs(selectedAsset.y - b.y) < 0.1) {
+          ctx.beginPath();
+          ctx.moveTo(left, b.y);
+          ctx.lineTo(right, b.y);
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)'; // Amber/Gold guidelines matching the yard styling
+          ctx.lineWidth = 1.5 / view.scale;
+          ctx.setLineDash([6, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Draw helper circle indicator around aligned target object to emphasize connection
+          const isZone = b.type === 'zone';
+          const defaultDia = (b.type === 'junction-box' || b.type === 'fan-control') ? 6 : 5;
+          const dia = parseFloat((b as any).diameter) || defaultDia;
+          const radius = isZone ? 0 : (dia / 2) * BASE_SCALE;
+          if (!isZone) {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, radius + 5 / view.scale, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+            ctx.lineWidth = 1 / view.scale;
+            ctx.stroke();
+          }
+        }
+      });
+    }
+
+    // Draw Zones first (below bins)
+    activeYard.bins
+      .filter((b) => b.type === 'zone')
+      .forEach((bin) => {
+        const zoneBin = bin as ZoneAsset;
+        const isSelected = selectedAssetIds.includes(zoneBin.id) || selectedAssetId === zoneBin.id;
+        const w = (parseFloat(zoneBin.width) || 20) * BASE_SCALE;
+        const h = (parseFloat(zoneBin.height) || 20) * BASE_SCALE;
+
+        ctx.beginPath();
+        ctx.rect(zoneBin.x - w / 2, zoneBin.y - h / 2, w, h);
+        ctx.strokeStyle = isSelected ? '#fbbf24' : '#f59e0b';
+        ctx.lineWidth = (isSelected ? 4 : 2.5) / view.scale;
+        ctx.setLineDash([6, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Resize handles
+        if (isSelected) {
+          const hx = zoneBin.x + w / 2;
+          const hy = zoneBin.y + h / 2;
+          const handleSize = 8 / view.scale;
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1 / view.scale;
+          ctx.strokeRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
+        }
+
+        if (zoneBin.name) {
+          ctx.font = `bold ${Math.max(12 / view.scale, 10)}px Inter`;
+          ctx.fillStyle = isSelected ? '#fbbf24' : '#f59e0b';
+          ctx.textAlign = 'left';
+          ctx.fillText(zoneBin.name, zoneBin.x - w / 2 + 4, zoneBin.y - h / 2 + 14);
+        }
+      });
+
+    // Draw Bins & Markers
+    activeYard.bins
+      .filter((b) => b.type !== 'zone')
+      .forEach((bin) => {
+        const isSelected = selectedAssetIds.includes(bin.id) || selectedAssetId === bin.id;
+        const defaultDia = (bin.type === 'junction-box' || bin.type === 'fan-control') ? 6 : 5;
+        const dia = parseFloat((bin as any).diameter) || defaultDia;
+        const radius = (dia / 2) * BASE_SCALE;
+
+        if (bin.type === 'chester-x' || bin.type === 'chester-x1' || bin.type === 'junction-box' || bin.type === 'fan-control') {
+          ctx.beginPath();
+          ctx.moveTo(bin.x - radius, bin.y - radius);
+          ctx.lineTo(bin.x + radius, bin.y + radius);
+          ctx.moveTo(bin.x + radius, bin.y - radius);
+          ctx.lineTo(bin.x - radius, bin.y + radius);
+
+          ctx.strokeStyle = 
+            bin.type === 'chester-x' 
+              ? '#ef4444' 
+              : bin.type === 'chester-x1' 
+              ? '#3b82f6' 
+              : bin.type === 'junction-box'
+              ? '#10b981'
+              : '#a855f7'; // Purple/Violet for Fan Control
+          ctx.lineWidth = (isSelected ? 10 : 6) / view.scale;
+          ctx.stroke();
+
+          if (isSelected) {
+            ctx.beginPath();
+            ctx.arc(bin.x, bin.y, radius * 1.5, 0, Math.PI * 2);
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 1.5 / view.scale;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+        } else {
+          // Standard Bin
+          ctx.beginPath();
+          ctx.arc(bin.x, bin.y, radius, 0, Math.PI * 2);
+          ctx.fillStyle = isSelected ? '#1e1b4b' : '#18181b';
+          ctx.fill();
+          ctx.strokeStyle = isSelected ? '#f59e0b' : '#b45309';
+          ctx.lineWidth = (isSelected ? 4 : 2) / view.scale;
+          ctx.stroke();
+        }
+
+        if (bin.name && bin.type !== 'chester-x' && bin.type !== 'chester-x1' && bin.type !== 'junction-box' && bin.type !== 'fan-control') {
+          ctx.font = `bold ${Math.max(12 / view.scale, 8)}px Inter`;
+          ctx.fillStyle = isSelected ? '#f59e0b' : '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.fillText(bin.name, bin.x, bin.y + 4 / view.scale);
+        }
+      });
+
+    // Draw Wire Connections
+    const wires = activeYard.wires || [];
+    wires.forEach((wire) => {
+      const fromAsset = activeYard.bins.find((b) => b.id === wire.fromId);
+      const toAsset = activeYard.bins.find((b) => b.id === wire.toId);
+      if (!fromAsset || !toAsset) return;
+
+      const x1 = fromAsset.x;
+      const y1 = fromAsset.y;
+      const x2 = toAsset.x;
+      const y2 = toAsset.y;
+
+      // Calculate control point for curved wires to bypass overlapping bins/markers
+      const midX = (x1 + x2) / 2;
+      const midY = (y1 + y2) / 2;
+
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const offset = Math.max(30, len * 0.25);
+      const px = -dy / (len || 1);
+      const py = dx / (len || 1);
+
+      const ctrlX = midX + px * offset;
+      const ctrlY = midY + py * offset;
+
+      // Determine wire color: Cat5 = Blue, Female Link = Rose
+      const wireColor = wire.type === 'cat5' ? '#3b82f6' : '#f43f5e';
+
+      // Draw dashed wire curve
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.quadraticCurveTo(ctrlX, ctrlY, x2, y2);
+      ctx.strokeStyle = wireColor;
+      ctx.lineWidth = 2.5 / view.scale;
+      ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw small interactive delete button at the midpoint of the wire curve
+      const curveMidX = 0.25 * x1 + 0.5 * ctrlX + 0.25 * x2;
+      const curveMidY = 0.25 * y1 + 0.5 * ctrlY + 0.25 * y2;
+
+      ctx.save();
+      const isHovered = hoveredWireId === wire.id;
+      const btnRadius = 7 / view.scale;
+
+      ctx.beginPath();
+      ctx.arc(curveMidX, curveMidY, btnRadius, 0, Math.PI * 2);
+      ctx.fillStyle = isHovered ? '#ef4444' : '#171717';
+      ctx.strokeStyle = isHovered ? '#ffffff' : wireColor;
+      ctx.lineWidth = 1.5 / view.scale;
+      ctx.fill();
+      ctx.stroke();
+
+      // Draw standard "x" cross inside
+      ctx.beginPath();
+      const xSize = 2.5 / view.scale;
+      ctx.moveTo(curveMidX - xSize, curveMidY - xSize);
+      ctx.lineTo(curveMidX + xSize, curveMidY + xSize);
+      ctx.moveTo(curveMidX + xSize, curveMidY - xSize);
+      ctx.lineTo(curveMidX - xSize, curveMidY + xSize);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5 / view.scale;
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Draw active wiring preview line
+    if (wiringState?.active && wiringState.fromAssetId !== null && mouseWorldPos) {
+      const fromAsset = activeYard.bins.find((b) => b.id === wiringState.fromAssetId);
+      if (fromAsset) {
+        const x1 = fromAsset.x;
+        const y1 = fromAsset.y;
+        const x2 = mouseWorldPos.x;
+        const y2 = mouseWorldPos.y;
+
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const offset = Math.max(30, len * 0.25);
+        const px = -dy / (len || 1);
+        const py = dx / (len || 1);
+
+        const ctrlX = midX + px * offset;
+        const ctrlY = midY + py * offset;
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.quadraticCurveTo(ctrlX, ctrlY, x2, y2);
+        ctx.strokeStyle = '#d8b4fe'; // bright purple for preview
+        ctx.lineWidth = 2 / view.scale;
+        ctx.setLineDash([4, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw helper circle indicator on start asset
+        ctx.beginPath();
+        ctx.arc(fromAsset.x, fromAsset.y, 8 / view.scale, 0, Math.PI * 2);
+        ctx.strokeStyle = '#d8b4fe';
+        ctx.lineWidth = 1.5 / view.scale;
+        ctx.stroke();
+      }
+    }
+
+    // Draw selection box
+    if (selectionBox) {
+      const x1 = selectionBox.startX;
+      const y1 = selectionBox.startY;
+      const x2 = selectionBox.currentX;
+      const y2 = selectionBox.currentY;
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.15)'; // Blue/indigo translucent background
+      ctx.strokeStyle = '#3b82f6'; // Bright blue border
+      ctx.lineWidth = 1.5 / view.scale;
+      ctx.beginPath();
+      ctx.rect(x1, y1, x2 - x1, y2 - y1);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.restore();
+
+    // Draw Compass
+    drawCompass(ctx, dimensions.width - 60, 60);
+  }, [dimensions, view, activeYard, selectedAssetId, selectedAssetIds, selectionBox]);
+
+  const drawCompass = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = '#b45309';
+    ctx.fillStyle = '#b45309';
+    ctx.beginPath();
+    ctx.arc(0, 0, 18, 0, Math.PI * 2);
+    ctx.setLineDash([2, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(0, 11);
+    ctx.lineTo(0, -11);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-4, 0);
+    ctx.lineTo(0, -13);
+    ctx.lineTo(4, 0);
+    ctx.fill();
+    ctx.font = 'bold 9px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText('N', 0, -17);
+    ctx.restore();
+  };
+
+  // Model spec lookup and adaptation logic
+  const matchedModel = useMemo(() => {
+    if (!selectedAsset || selectedAsset.type !== 'bin') return null;
+    const bin = selectedAsset as BinAsset;
+    if (!bin.modelNumber) return null;
+    const qModel = bin.modelNumber.trim().toLowerCase();
+    const qMfg = (bin.manufacturer || '').trim().toLowerCase();
+
+    // 1. If manufacturer is present on bin, prioritize exact manufacturer + model match
+    if (qMfg) {
+      let found = BIN_DATABASE.find(
+        (m) => m.manufacturer.toLowerCase() === qMfg && m.modelNumber.toLowerCase() === qModel
+      );
+      if (found) return found;
+
+      found = BIN_DATABASE.find(
+        (m) =>
+          (m.manufacturer.toLowerCase().includes(qMfg) || qMfg.includes(m.manufacturer.toLowerCase())) &&
+          m.modelNumber.toLowerCase() === qModel
+      );
+      if (found) return found;
+    }
+
+    // 2. Match on fullName or manufacturer + model
+    let found = BIN_DATABASE.find((m) => m.fullName.toLowerCase() === qModel);
+    if (found) return found;
+
+    found = BIN_DATABASE.find((m) => `${m.manufacturer} ${m.modelNumber}`.toLowerCase() === qModel);
+    if (found) return found;
+
+    // 3. Fallback to model number match
+    found = BIN_DATABASE.find((m) => m.modelNumber.toLowerCase() === qModel);
+    if (found) return found;
+
+    if (qModel.length >= 2) {
+      const cleanQ = qModel.replace(/[^a-z0-9]/g, '');
+      if (qMfg) {
+        found = BIN_DATABASE.find(
+          (m) =>
+            m.manufacturer.toLowerCase() === qMfg &&
+            m.modelNumber.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanQ
+        );
+        if (found) return found;
+      }
+      found = BIN_DATABASE.find((m) => m.modelNumber.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanQ);
+    }
+
+    return found || null;
+  }, [selectedAsset]);
+
+  const handleApplyModelFromSpec = (match: BinSpecModel) => {
+    onUpdateProject((prev) => ({
+      ...prev,
+      yards: prev.yards.map((y) => {
+        if (y.id !== prev.activeYardId) return y;
+        return {
+          ...y,
+          bins: y.bins.map((b) => {
+            if (b.id !== selectedAssetId || b.type !== 'bin') return b;
+
+            const updatedBin: BinAsset = {
+              ...b,
+              modelNumber: match.modelNumber,
+              manufacturer: match.manufacturer,
+              diameter: match.diameterFt.toString(),
+              eaveHeight: match.eaveHeightFt.toString(),
+              totalHeight: match.totalHeightFt.toString(),
+              rings: match.rings.toString(),
+              isHopper: match.isHopper,
+              hopperConeHeight: match.hopperConeHeightFt
+                ? match.hopperConeHeightFt.toString()
+                : match.isHopper
+                ? '8'
+                : '',
+              capacityBushels: match.capacityBushels,
+            };
+
+            try {
+              const savedVerified = localStorage.getItem('grainlink_verified_cables');
+              const verifiedMap = savedVerified ? JSON.parse(savedVerified) : {};
+              const verified = verifiedMap[String(match.id)];
+
+              if (verified && (verified.centerCable || verified.radiusCable)) {
+                updatedBin.centerCable = verified.centerCable;
+                updatedBin.radiusCable = verified.radiusCable;
+              } else if (match.verifiedCenterCableFt || match.verifiedRadiusCableFt) {
+                updatedBin.centerCable = match.verifiedCenterCableFt || '';
+                updatedBin.radiusCable = match.verifiedRadiusCableFt || '';
+              } else {
+                const rec = getCableRecommendation(match.diameterFt.toString());
+                updatedBin.centerCable = (rec.center > 0 ? Math.round(match.totalHeightFt + 3) : 0).toString();
+                updatedBin.radiusCable = (rec.radius > 0 ? Math.round(match.totalHeightFt + 1) : 0).toString();
+              }
+            } catch (e) {
+              console.error(e);
+            }
+
+            return updatedBin;
+          }),
+        };
+      }),
+    }));
+  };
+
+  const handleApplyModelNumber = (modelNumInput: string) => {
+    const trimmed = modelNumInput.trim();
+    if (!trimmed) {
+      onUpdateProject((prev) => ({
+        ...prev,
+        yards: prev.yards.map((y) => {
+          if (y.id !== prev.activeYardId) return y;
+          return {
+            ...y,
+            bins: y.bins.map((b) => (b.id === selectedAssetId && b.type === 'bin' ? { ...b, modelNumber: '' } : b)),
+          };
+        }),
+      }));
+      return;
+    }
+
+    const bin = selectedAsset && selectedAsset.type === 'bin' ? (selectedAsset as BinAsset) : null;
+    const currentMfg = (bin?.manufacturer || '').trim().toLowerCase();
+    const cleanInput = trimmed.toLowerCase();
+
+    let match: BinSpecModel | null = null;
+
+    // 1. Check if input contains full name or brand + model
+    match = BIN_DATABASE.find((m) => m.fullName.toLowerCase() === cleanInput) || null;
+    if (!match) {
+      match = BIN_DATABASE.find((m) => `${m.manufacturer} ${m.modelNumber}`.toLowerCase() === cleanInput) || null;
+    }
+
+    // 2. If current bin has manufacturer, prioritize matching that manufacturer
+    if (!match && currentMfg) {
+      match =
+        BIN_DATABASE.find(
+          (m) => m.manufacturer.toLowerCase() === currentMfg && m.modelNumber.toLowerCase() === cleanInput
+        ) || null;
+
+      if (!match) {
+        match =
+          BIN_DATABASE.find(
+            (m) =>
+              (m.manufacturer.toLowerCase().includes(currentMfg) || currentMfg.includes(m.manufacturer.toLowerCase())) &&
+              m.modelNumber.toLowerCase() === cleanInput
+          ) || null;
+      }
+    }
+
+    // 3. Fallback to modelNumber match
+    if (!match) {
+      match = BIN_DATABASE.find((m) => m.modelNumber.toLowerCase() === cleanInput) || null;
+    }
+
+    // 4. Fallback to cleaned alphanumeric match
+    if (!match && cleanInput.length >= 2) {
+      const cleanQ = cleanInput.replace(/[^a-z0-9]/g, '');
+      if (currentMfg) {
+        match =
+          BIN_DATABASE.find(
+            (m) =>
+              m.manufacturer.toLowerCase() === currentMfg &&
+              m.modelNumber.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanQ
+          ) || null;
+      }
+      if (!match) {
+        match =
+          BIN_DATABASE.find((m) => m.modelNumber.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanQ) || null;
+      }
+    }
+
+    if (match) {
+      handleApplyModelFromSpec(match);
+    } else {
+      // Just update modelNumber string without changing dimensions or manufacturer
+      onUpdateProject((prev) => ({
+        ...prev,
+        yards: prev.yards.map((y) => {
+          if (y.id !== prev.activeYardId) return y;
+          return {
+            ...y,
+            bins: y.bins.map((b) => (b.id === selectedAssetId && b.type === 'bin' ? { ...b, modelNumber: trimmed } : b)),
+          };
+        }),
+      }));
+    }
+  };
+
+  const handleAddBinFromModel = (model: BinSpecModel) => {
+    if (!activeYard) return;
+
+    const worldCenter = screenToWorld(dimensions.width / 2, dimensions.height / 2);
+    const binCountInYard = activeYard.bins.filter((b) => b.type === 'bin').length + 1;
+
+    let centerCable = '';
+    let radiusCable = '';
+    try {
+      const savedVerified = localStorage.getItem('grainlink_verified_cables');
+      const verifiedMap = savedVerified ? JSON.parse(savedVerified) : {};
+      const verified = verifiedMap[String(model.id)];
+
+      if (verified && (verified.centerCable || verified.radiusCable)) {
+        centerCable = verified.centerCable;
+        radiusCable = verified.radiusCable;
+      } else if (model.verifiedCenterCableFt || model.verifiedRadiusCableFt) {
+        centerCable = model.verifiedCenterCableFt || '';
+        radiusCable = model.verifiedRadiusCableFt || '';
+      } else {
+        const rec = getCableRecommendation(model.diameterFt.toString());
+        centerCable = (rec.center > 0 ? Math.round(model.totalHeightFt + 3) : 0).toString();
+        radiusCable = (rec.radius > 0 ? Math.round(model.totalHeightFt + 1) : 0).toString();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    const newBin: BinAsset = {
+      id: Date.now(),
+      type: 'bin',
+      name: `GB${binCountInYard}`,
+      manufacturer: model.manufacturer,
+      modelNumber: model.modelNumber,
+      diameter: model.diameterFt.toString(),
+      rings: model.rings.toString(),
+      eaveHeight: model.eaveHeightFt.toString(),
+      totalHeight: model.totalHeightFt.toString(),
+      floorThick: '1.5',
+      isHopper: model.isHopper,
+      hopperConeHeight: model.hopperConeHeightFt ? model.hopperConeHeightFt.toString() : model.isHopper ? '8' : '',
+      capacityBushels: model.capacityBushels,
+      centerCable,
+      radiusCable,
+      notes: '',
+      measurements: [],
+      x: snapToGrid ? Math.round(worldCenter.x / GRID_SIZE) * GRID_SIZE : worldCenter.x,
+      y: snapToGrid ? Math.round(worldCenter.y / GRID_SIZE) * GRID_SIZE : worldCenter.y,
+    };
+
+    onUpdateProject((prev) => ({
+      ...prev,
+      yards: prev.yards.map((y) =>
+        y.id === prev.activeYardId ? { ...y, bins: [...y.bins, newBin] } : y
+      ),
+    }));
+    onSelectAsset(newBin.id);
+  };
+
+  // Add Asset Presets
+  const handleAddBin = (diameter: number) => {
+    if (!activeYard) return;
+
+    const worldCenter = screenToWorld(dimensions.width / 2, dimensions.height / 2);
+    const binCountInYard = activeYard.bins.filter((b) => b.type === 'bin').length + 1;
+
+    const newBin: BinAsset = {
+      id: Date.now(),
+      type: 'bin',
+      name: `GB${binCountInYard}`,
+      diameter: diameter.toString(),
+      rings: Math.round(32 / 4).toString(),
+      eaveHeight: '32',
+      totalHeight: '42',
+      floorThick: '1.5',
+      notes: '',
+      measurements: [],
+      x: snapToGrid ? Math.round(worldCenter.x / GRID_SIZE) * GRID_SIZE : worldCenter.x,
+      y: snapToGrid ? Math.round(worldCenter.y / GRID_SIZE) * GRID_SIZE : worldCenter.y,
+    };
+
+    onUpdateProject((prev) => ({
+      ...prev,
+      yards: prev.yards.map((y) =>
+        y.id === prev.activeYardId ? { ...y, bins: [...y.bins, newBin] } : y
+      ),
+    }));
+    onSelectAsset(newBin.id);
+  };
+
+  const handleAddSpecialMarker = (markerType: 'chester-x' | 'chester-x1' | 'junction-box' | 'fan-control') => {
+    if (!activeYard) return;
+
+    const worldCenter = screenToWorld(dimensions.width / 2, dimensions.height / 2);
+    const labelPrefix = 
+      markerType === 'chester-x' 
+        ? 'Chester-X' 
+        : markerType === 'chester-x1' 
+        ? 'Chester-X1' 
+        : markerType === 'junction-box'
+        ? 'Junction Box'
+        : 'Fan Control';
+    const count = activeYard.bins.filter((b) => b.type === markerType).length + 1;
+
+    const newMarker: MarkerAsset = {
+      id: Date.now(),
+      type: markerType,
+      name: `${labelPrefix} ${count}`,
+      diameter: (markerType === 'junction-box' || markerType === 'fan-control') ? '6' : '5',
+      notes: '',
+      x: snapToGrid ? Math.round(worldCenter.x / GRID_SIZE) * GRID_SIZE : worldCenter.x,
+      y: snapToGrid ? Math.round(worldCenter.y / GRID_SIZE) * GRID_SIZE : worldCenter.y,
+    };
+
+    onUpdateProject((prev) => ({
+      ...prev,
+      yards: prev.yards.map((y) =>
+        y.id === prev.activeYardId ? { ...y, bins: [...y.bins, newMarker] } : y
+      ),
+    }));
+    onSelectAsset(newMarker.id);
+  };
+
+  const handleAddZoneBox = () => {
+    if (!activeYard) return;
+
+    const worldCenter = screenToWorld(dimensions.width / 2, dimensions.height / 2);
+    const newZone: ZoneAsset = {
+      id: Date.now(),
+      type: 'zone',
+      name: '',
+      width: '60',
+      height: '40',
+      notes: '',
+      x: snapToGrid ? Math.round(worldCenter.x / GRID_SIZE) * GRID_SIZE : worldCenter.x,
+      y: snapToGrid ? Math.round(worldCenter.y / GRID_SIZE) * GRID_SIZE : worldCenter.y,
+    };
+
+    onUpdateProject((prev) => ({
+      ...prev,
+      yards: prev.yards.map((y) =>
+        y.id === prev.activeYardId ? { ...y, bins: [...y.bins, newZone] } : y
+      ),
+    }));
+    onSelectAsset(newZone.id);
+  };
+
+  const handleDeleteAsset = useCallback(() => {
+    const idsToDelete = selectedAssetIds.length > 0
+      ? selectedAssetIds
+      : (selectedAssetId !== null ? [selectedAssetId] : []);
+
+    if (idsToDelete.length === 0) return;
+
+    onUpdateProject((prev) => ({
+      ...prev,
+      yards: prev.yards.map((y) => {
+        if (y.id !== prev.activeYardId) return y;
+        return {
+          ...y,
+          bins: y.bins.filter((b) => !idsToDelete.includes(b.id)),
+          wires: (y.wires || []).filter((w) => !idsToDelete.includes(w.fromId) && !idsToDelete.includes(w.toId)),
+        };
+      }),
+    }));
+
+    setSelectedAssetIds([]);
+    onSelectAsset(null);
+  }, [selectedAssetId, selectedAssetIds, onUpdateProject, onSelectAsset]);
+
+  const handleDuplicateAsset = useCallback(() => {
+    const idsToDuplicate = selectedAssetIds.length > 0
+      ? selectedAssetIds
+      : (selectedAssetId !== null ? [selectedAssetId] : []);
+
+    if (idsToDuplicate.length === 0 || !activeYard) return;
+
+    const binsToDup = activeYard.bins.filter((b) => idsToDuplicate.includes(b.id));
+    if (binsToDup.length === 0) return;
+
+    const binCountInYard = activeYard.bins.filter((b) => b.type === 'bin').length + 1;
+
+    const newBins = binsToDup.map((b, index) => {
+      let newName = '';
+      if (b.type === 'bin') {
+        newName = `GB${binCountInYard + index}`;
+      } else if (b.type === 'chester-x' || b.type === 'chester-x1' || b.type === 'junction-box' || b.type === 'fan-control') {
+        const type = b.type;
+        const prefix = 
+          type === 'chester-x' 
+            ? 'Chester-X' 
+            : type === 'chester-x1' 
+            ? 'Chester-X1' 
+            : type === 'junction-box'
+            ? 'Junction Box'
+            : 'Fan Control';
+        
+        const currentName = b.name || prefix;
+        const cleanName = currentName.replace(/\s*\(?copy\)?\s*$/i, '').trim();
+        const numberMatch = cleanName.match(/^(.*?)\s+(\d+)$/);
+        
+        let basePart = prefix;
+        let originalNum = 0;
+        if (numberMatch) {
+          basePart = numberMatch[1];
+          originalNum = parseInt(numberMatch[2], 10);
+        } else {
+          basePart = cleanName;
+        }
+
+        const sameTypeBins = activeYard.bins.filter((sb) => sb.type === type);
+        let maxNum = originalNum || 0;
+        sameTypeBins.forEach((sb) => {
+          const bClean = sb.name.replace(/\s*\(?copy\)?\s*$/i, '').trim();
+          const match = bClean.match(new RegExp('^' + escapeRegExp(basePart) + '\\s+(\\d+)$', 'i'));
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxNum) {
+              maxNum = num;
+            }
+          }
+        });
+
+        const nextNum = (maxNum > 0 ? maxNum : 1) + 1 + index;
+        newName = `${basePart} ${nextNum}`;
+      } else {
+        newName = b.name ? `${b.name} (Copy)` : '';
+      }
+
+      return {
+        ...JSON.parse(JSON.stringify(b)),
+        id: Date.now() + index,
+        x: b.x + 40,
+        y: b.y + 40,
+        name: newName,
+      };
+    });
+
+    onUpdateProject((prev) => ({
+      ...prev,
+      yards: prev.yards.map((y) =>
+        y.id === prev.activeYardId ? { ...y, bins: [...y.bins, ...newBins] } : y
+      ),
+    }));
+
+    const newIds = newBins.map((b) => b.id);
+    handleSetSelectedAssetIds(newIds);
+  }, [selectedAssetId, selectedAssetIds, project, activeYard, onUpdateProject]);
+
+  const handleDistributeAssets = useCallback(
+    (mode: 'horizontal' | 'vertical') => {
+      if (!activeYard) return;
+
+      let targetIds =
+        selectedAssetIds.length >= 2
+          ? selectedAssetIds
+          : selectedAssetId !== null
+          ? [selectedAssetId]
+          : [];
+
+      let targets = activeYard.bins.filter((b) => targetIds.includes(b.id));
+
+      // Fallback: if fewer than 2 items are selected, distribute all standard grain bins in the active yard
+      if (targets.length < 2) {
+        targets = activeYard.bins.filter((b) => b.type === 'bin');
+      }
+
+      if (targets.length < 2) return;
+
+      const updatedMap = new Map<number, { x: number; y: number }>();
+
+      if (mode === 'horizontal') {
+        const sorted = [...targets].sort((a, b) => a.x - b.x);
+        const minX = sorted[0].x;
+        const maxX = sorted[sorted.length - 1].x;
+        const count = sorted.length;
+        const totalY = sorted.reduce((sum, b) => sum + b.y, 0);
+        const avgY = totalY / count;
+
+        const isCollapsed = maxX === minX;
+        const defaultStep = isCollapsed ? 100 : (maxX - minX) / (count - 1);
+
+        sorted.forEach((b, index) => {
+          let newX = minX + index * defaultStep;
+          if (snapToGrid) {
+            newX = Math.round(newX / GRID_SIZE) * GRID_SIZE;
+          }
+          let newY = avgY;
+          if (snapToGrid) {
+            newY = Math.round(newY / GRID_SIZE) * GRID_SIZE;
+          }
+          updatedMap.set(b.id, { x: newX, y: newY });
+        });
+      } else if (mode === 'vertical') {
+        const sorted = [...targets].sort((a, b) => a.y - b.y);
+        const minY = sorted[0].y;
+        const maxY = sorted[sorted.length - 1].y;
+        const count = sorted.length;
+        const totalX = sorted.reduce((sum, b) => sum + b.x, 0);
+        const avgX = totalX / count;
+
+        const isCollapsed = maxY === minY;
+        const defaultStep = isCollapsed ? 100 : (maxY - minY) / (count - 1);
+
+        sorted.forEach((b, index) => {
+          let newY = minY + index * defaultStep;
+          if (snapToGrid) {
+            newY = Math.round(newY / GRID_SIZE) * GRID_SIZE;
+          }
+          let newX = avgX;
+          if (snapToGrid) {
+            newX = Math.round(newX / GRID_SIZE) * GRID_SIZE;
+          }
+          updatedMap.set(b.id, { x: newX, y: newY });
+        });
+      }
+
+      onUpdateProject((prev) => ({
+        ...prev,
+        yards: prev.yards.map((y) => {
+          if (y.id !== prev.activeYardId) return y;
+          return {
+            ...y,
+            bins: y.bins.map((b) => {
+              if (updatedMap.has(b.id)) {
+                const pos = updatedMap.get(b.id)!;
+                return { ...b, x: pos.x, y: pos.y };
+              }
+              return b;
+            }),
+          };
+        }),
+      }));
+    },
+    [activeYard, selectedAssetIds, selectedAssetId, snapToGrid, onUpdateProject]
+  );
+
+  // Setup Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if focus is in text inputs or textarea
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT'
+      ) {
+        return;
+      }
+
+      const hasSelection = selectedAssetIds.length > 0 || selectedAssetId !== null;
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (hasSelection) {
+          handleDeleteAsset();
+          e.preventDefault();
+        }
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+        if (hasSelection) {
+          handleDuplicateAsset();
+          e.preventDefault();
+        }
+      }
+
+      // Arrow key movement for selected assets
+      const idsToMove = selectedAssetIds.length > 0
+        ? selectedAssetIds
+        : (selectedAssetId !== null ? [selectedAssetId] : []);
+
+      if (idsToMove.length > 0) {
+        let dx = 0;
+        let dy = 0;
+        const step = snapToGrid ? GRID_SIZE : 1;
+        if (e.key === 'ArrowUp') {
+          dy = -step;
+        } else if (e.key === 'ArrowDown') {
+          dy = step;
+        } else if (e.key === 'ArrowLeft') {
+          dx = -step;
+        } else if (e.key === 'ArrowRight') {
+          dx = step;
+        }
+
+        if (dx !== 0 || dy !== 0) {
+          e.preventDefault();
+          onUpdateProject((prev) => ({
+            ...prev,
+            yards: prev.yards.map((y) =>
+              y.id === prev.activeYardId
+                ? {
+                    ...y,
+                    bins: y.bins.map((b) =>
+                      idsToMove.includes(b.id)
+                        ? { ...b, x: b.x + dx, y: b.y + dy }
+                        : b
+                    ),
+                  }
+                : y
+            ),
+          }));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedAssetId, selectedAssetIds, snapToGrid, onUpdateProject, handleDeleteAsset, handleDuplicateAsset]);
+
+  const handleUpdateAssetProperty = (key: string, value: any) => {
+    onUpdateProject((prev) => ({
+      ...prev,
+      yards: prev.yards.map((y) =>
+        y.id === prev.activeYardId
+          ? {
+              ...y,
+              bins: y.bins.map((b) => {
+                if (b.id !== selectedAssetId) return b;
+                const updated = { ...b, [key]: value };
+                if (key === 'eaveHeight' && b.type === 'bin') {
+                  updated.rings = Math.round(parseFloat(value) / 4).toString();
+                }
+                return updated;
+              }),
+            }
+          : y
+      ),
+    }));
+  };
+
+  const handleSaveWire = (type: 'cat5' | 'female-link') => {
+    if (!activeYard || !wiringState || wiringState.fromAssetId === null || !wiringState.toAssetId) return;
+    const fromId = wiringState.fromAssetId;
+    const toId = wiringState.toAssetId;
+
+    onUpdateProject((prev) => ({
+      ...prev,
+      yards: prev.yards.map((y) => {
+        if (y.id !== prev.activeYardId) return y;
+        const currentWires = y.wires || [];
+        const newWire = {
+          id: Date.now(),
+          fromId,
+          toId,
+          type,
+        };
+        return {
+          ...y,
+          wires: [...currentWires, newWire],
+        };
+      }),
+    }));
+
+    setWiringState(null);
+  };
+
+  // Sync Shared Cable Lengths across bins with the same specifications
+  const syncSharedCableLengths = (sourceBin: BinAsset) => {
+    if (!sourceBin.centerCable && !sourceBin.radiusCable) return;
+    onUpdateProject((prev) => ({
+      ...prev,
+      yards: prev.yards.map((y) => ({
+        ...y,
+        bins: y.bins.map((b) => {
+          if (
+            b.type === 'bin' &&
+            b.id !== sourceBin.id &&
+            b.eaveHeight === sourceBin.eaveHeight &&
+            b.totalHeight === sourceBin.totalHeight
+          ) {
+            return {
+              ...b,
+              centerCable: sourceBin.centerCable,
+              radiusCable: sourceBin.radiusCable,
+            };
+          }
+          return b;
+        }),
+      })),
+    }));
+  };
+
+  const getAssetsInSelectionBox = (box: { startX: number; startY: number; currentX: number; currentY: number }) => {
+    if (!activeYard) return [];
+    const minX = Math.min(box.startX, box.currentX);
+    const maxX = Math.max(box.startX, box.currentX);
+    const minY = Math.min(box.startY, box.currentY);
+    const maxY = Math.max(box.startY, box.currentY);
+
+    return activeYard.bins
+      .filter((b) => {
+        return b.x >= minX && b.x <= maxX && b.y >= minY && b.y <= maxY;
+      })
+      .map((b) => b.id);
+  };
+
+  // Mouse Interaction handlers
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || !activeYard) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const worldPos = screenToWorld(mouseX, mouseY);
+
+    // If we clicked a wire's delete button, delete it
+    if (hoveredWireId !== null) {
+      onUpdateProject((prev) => ({
+        ...prev,
+        yards: prev.yards.map((y) => {
+          if (y.id !== prev.activeYardId) return y;
+          return {
+            ...y,
+            wires: (y.wires || []).filter((w) => w.id !== hoveredWireId),
+          };
+        }),
+      }));
+      setHoveredWireId(null);
+      return;
+    }
+
+    // If wiring mode is active, handle node selection
+    if (wiringState?.active) {
+      const nonZones = activeYard.bins.filter((b) => b.type !== 'zone');
+      const zones = activeYard.bins.filter((b) => b.type === 'zone');
+      let clickedBin = [...nonZones].reverse().find((b) => {
+        const defaultDia = (b.type === 'junction-box' || b.type === 'fan-control') ? 6 : 5;
+        const dia = parseFloat((b as any).diameter) || defaultDia;
+        const r = (dia / 2) * BASE_SCALE;
+        const dist = Math.sqrt(Math.pow(worldPos.x - b.x, 2) + Math.pow(worldPos.y - b.y, 2));
+        return dist < r;
+      });
+
+      if (!clickedBin) {
+        clickedBin = [...zones].reverse().find((b) => {
+          const zone = b as ZoneAsset;
+          const w = (parseFloat(zone.width) || 20) * BASE_SCALE;
+          const h = (parseFloat(zone.height) || 20) * BASE_SCALE;
+          return (
+            worldPos.x >= zone.x - w / 2 &&
+            worldPos.x <= zone.x + w / 2 &&
+            worldPos.y >= zone.y - h / 2 &&
+            worldPos.y <= zone.y + h / 2
+          );
+        });
+      }
+
+      if (clickedBin) {
+        if (wiringState.fromAssetId === null) {
+          setWiringState({ ...wiringState, fromAssetId: clickedBin.id });
+        } else if (clickedBin.id !== wiringState.fromAssetId) {
+          setWiringState({ ...wiringState, toAssetId: clickedBin.id, showLabelInput: true });
+        }
+      }
+      return;
+    }
+
+    // 1. Zone Resize handle check
+    if (selectedAsset && selectedAsset.type === 'zone') {
+      const zoneBin = selectedAsset as ZoneAsset;
+      const w = (parseFloat(zoneBin.width) || 20) * BASE_SCALE;
+      const h = (parseFloat(zoneBin.height) || 20) * BASE_SCALE;
+      const hx = zoneBin.x + w / 2;
+      const hy = zoneBin.y + h / 2;
+
+      const dx = (worldPos.x - hx) * view.scale;
+      const dy = (worldPos.y - hy) * view.scale;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < 15) {
+        resizeInfoRef.current = {
+          active: true,
+          anchorX: zoneBin.x - w / 2,
+          anchorY: zoneBin.y - h / 2,
+        };
+        return;
+      }
+    }
+
+    // 2. Select / Click detection
+    const nonZones = activeYard.bins.filter((b) => b.type !== 'zone');
+    const zones = activeYard.bins.filter((b) => b.type === 'zone');
+
+    let clickedBin = [...nonZones].reverse().find((b) => {
+      const defaultDia = (b.type === 'junction-box' || b.type === 'fan-control') ? 6 : 5;
+      const dia = parseFloat((b as any).diameter) || defaultDia;
+      const r = (dia / 2) * BASE_SCALE;
+      const dist = Math.sqrt(Math.pow(worldPos.x - b.x, 2) + Math.pow(worldPos.y - b.y, 2));
+      return dist < r;
+    });
+
+    if (!clickedBin) {
+      clickedBin = [...zones].reverse().find((b) => {
+        const zone = b as ZoneAsset;
+        const w = (parseFloat(zone.width) || 20) * BASE_SCALE;
+        const h = (parseFloat(zone.height) || 20) * BASE_SCALE;
+        return (
+          worldPos.x >= zone.x - w / 2 &&
+          worldPos.x <= zone.x + w / 2 &&
+          worldPos.y >= zone.y - h / 2 &&
+          worldPos.y <= zone.y + h / 2
+        );
+      });
+    }
+
+    if (clickedBin) {
+      const isShift = e.shiftKey;
+      let nextSelectedIds = [...selectedAssetIds];
+
+      if (isShift) {
+        if (nextSelectedIds.includes(clickedBin.id)) {
+          nextSelectedIds = nextSelectedIds.filter((id) => id !== clickedBin.id);
+        } else {
+          nextSelectedIds.push(clickedBin.id);
+        }
+      } else {
+        if (!nextSelectedIds.includes(clickedBin.id)) {
+          nextSelectedIds = [clickedBin.id];
+        }
+      }
+
+      handleSetSelectedAssetIds(nextSelectedIds);
+
+      const dragIds = nextSelectedIds.includes(clickedBin.id) ? nextSelectedIds : [clickedBin.id];
+
+      dragInfoRef.current = {
+        active: true,
+        offset: { x: worldPos.x - clickedBin.x, y: worldPos.y - clickedBin.y },
+        startWorldPos: { x: worldPos.x, y: worldPos.y },
+        startPositions: dragIds.map((id) => {
+          const b = activeYard.bins.find((bin) => bin.id === id);
+          return { id, x: b?.x || 0, y: b?.y || 0 };
+        }),
+      };
+    } else {
+      // Empty space clicked
+      if (selectionMode === 'select') {
+        if (!e.shiftKey) {
+          handleSetSelectedAssetIds([]);
+        }
+        setSelectionBox({
+          startX: worldPos.x,
+          startY: worldPos.y,
+          currentX: worldPos.x,
+          currentY: worldPos.y,
+        });
+      } else {
+        if (!e.shiftKey) {
+          handleSetSelectedAssetIds([]);
+        }
+        panInfoRef.current = {
+          active: true,
+          start: { x: mouseX - view.x, y: mouseY - view.y },
+        };
+      }
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || !activeYard) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const worldPos = screenToWorld(mouseX, mouseY);
+
+    // If wiring is active, keep track of cursor world position for line previewing
+    if (wiringState?.active) {
+      setMouseWorldPos(worldPos);
+    }
+
+    // Update selection box if active
+    if (selectionBox) {
+      setSelectionBox({
+        ...selectionBox,
+        currentX: worldPos.x,
+        currentY: worldPos.y,
+      });
+      return;
+    }
+
+    // Track hover information if not actively dragging/panning/resizing
+    const isInteracting = dragInfoRef.current.active || panInfoRef.current.active || resizeInfoRef.current.active;
+
+    // Track hovered wire delete button
+    let foundHoveredWireId: number | null = null;
+    if (!isInteracting && !wiringState?.active) {
+      const wires = activeYard.wires || [];
+      for (const wire of wires) {
+        const fromAsset = activeYard.bins.find((b) => b.id === wire.fromId);
+        const toAsset = activeYard.bins.find((b) => b.id === wire.toId);
+        if (!fromAsset || !toAsset) continue;
+
+        const x1 = fromAsset.x;
+        const y1 = fromAsset.y;
+        const x2 = toAsset.x;
+        const y2 = toAsset.y;
+
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const offset = Math.max(30, len * 0.25);
+        const px = -dy / (len || 1);
+        const py = dx / (len || 1);
+
+        const ctrlX = midX + px * offset;
+        const ctrlY = midY + py * offset;
+
+        const curveMidX = 0.25 * x1 + 0.5 * ctrlX + 0.25 * x2;
+        const curveMidY = 0.25 * y1 + 0.5 * ctrlY + 0.25 * y2;
+
+        const dist = Math.sqrt(Math.pow(worldPos.x - curveMidX, 2) + Math.pow(worldPos.y - curveMidY, 2));
+        if (dist < 10 / view.scale) {
+          foundHoveredWireId = wire.id;
+          break;
+        }
+      }
+    }
+    setHoveredWireId(foundHoveredWireId);
+
+    if (isInteracting) {
+      setHoveredBin(null);
+      setHoverPos(null);
+    } else {
+      let hovered = null;
+      if (foundHoveredWireId === null) {
+        const nonZones = activeYard.bins.filter((b) => b.type !== 'zone');
+        const zones = activeYard.bins.filter((b) => b.type === 'zone');
+
+        hovered = [...nonZones].reverse().find((b) => {
+          const defaultDia = (b.type === 'junction-box' || b.type === 'fan-control') ? 6 : 5;
+          const dia = parseFloat((b as any).diameter) || defaultDia;
+          const r = (dia / 2) * BASE_SCALE;
+          const dist = Math.sqrt(Math.pow(worldPos.x - b.x, 2) + Math.pow(worldPos.y - b.y, 2));
+          return dist < r;
+        });
+
+        if (!hovered) {
+          hovered = [...zones].reverse().find((b) => {
+            const zone = b as ZoneAsset;
+            const w = (parseFloat(zone.width) || 20) * BASE_SCALE;
+            const h = (parseFloat(zone.height) || 20) * BASE_SCALE;
+            return (
+              worldPos.x >= zone.x - w / 2 &&
+              worldPos.x <= zone.x + w / 2 &&
+              worldPos.y >= zone.y - h / 2 &&
+              worldPos.y <= zone.y + h / 2
+            );
+          });
+        }
+      }
+
+      if (hovered) {
+        setHoveredBin(hovered);
+        setHoverPos({ x: mouseX, y: mouseY });
+      } else {
+        setHoveredBin(null);
+        setHoverPos(null);
+      }
+    }
+
+    // Set cursors
+    let hoverResizeHandle = false;
+    if (selectedAsset && selectedAsset.type === 'zone') {
+      const zoneBin = selectedAsset as ZoneAsset;
+      const w = (parseFloat(zoneBin.width) || 20) * BASE_SCALE;
+      const h = (parseFloat(zoneBin.height) || 20) * BASE_SCALE;
+      const hx = zoneBin.x + w / 2;
+      const hy = zoneBin.y + h / 2;
+
+      const dx = (worldPos.x - hx) * view.scale;
+      const dy = (worldPos.y - hy) * view.scale;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 15) hoverResizeHandle = true;
+    }
+
+    if (wiringState?.active) {
+      canvasRef.current.style.cursor = 'crosshair';
+    } else if (resizeInfoRef.current.active || hoverResizeHandle) {
+      canvasRef.current.style.cursor = 'se-resize';
+    } else if (dragInfoRef.current.active) {
+      canvasRef.current.style.cursor = 'grabbing';
+    } else if (foundHoveredWireId !== null) {
+      canvasRef.current.style.cursor = 'pointer';
+    } else if (selectionBox) {
+      canvasRef.current.style.cursor = 'crosshair';
+    } else {
+      canvasRef.current.style.cursor = selectionMode === 'pan' ? 'grab' : 'default';
+    }
+
+    // Process Drag / Resize / Pan
+    if (resizeInfoRef.current.active && selectedAsset && resizeInfoRef.current.anchorX !== undefined && resizeInfoRef.current.anchorY !== undefined) {
+      const ax = resizeInfoRef.current.anchorX;
+      const ay = resizeInfoRef.current.anchorY;
+
+      let newW = snapToGrid ? Math.round((worldPos.x - ax) / GRID_SIZE) * GRID_SIZE : (worldPos.x - ax);
+      let newH = snapToGrid ? Math.round((worldPos.y - ay) / GRID_SIZE) * GRID_SIZE : (worldPos.y - ay);
+      newW = Math.max(snapToGrid ? GRID_SIZE * 2 : 2, newW);
+      newH = Math.max(snapToGrid ? GRID_SIZE * 2 : 2, newH);
+
+      onUpdateProject((prev) => ({
+        ...prev,
+        yards: prev.yards.map((y) =>
+          y.id === prev.activeYardId
+            ? {
+                ...y,
+                bins: y.bins.map((b) =>
+                  b.id === selectedAssetId
+                    ? {
+                        ...b,
+                        width: (newW / BASE_SCALE).toFixed(1),
+                        height: (newH / BASE_SCALE).toFixed(1),
+                        x: ax + newW / 2,
+                        y: ay + newH / 2,
+                      }
+                    : b
+                ),
+              }
+            : y
+        ),
+      }));
+    } else if (dragInfoRef.current.active && dragInfoRef.current.startPositions && dragInfoRef.current.startWorldPos) {
+      const dx = worldPos.x - dragInfoRef.current.startWorldPos.x;
+      const dy = worldPos.y - dragInfoRef.current.startWorldPos.y;
+      const isSingleDrag = dragInfoRef.current.startPositions.length === 1;
+
+      onUpdateProject((prev) => ({
+        ...prev,
+        yards: prev.yards.map((y) => {
+          if (y.id !== prev.activeYardId) return y;
+          return {
+            ...y,
+            bins: y.bins.map((b) => {
+              const startPos = dragInfoRef.current.startPositions?.find((sp) => sp.id === b.id);
+              if (!startPos) return b;
+
+              let targetX = startPos.x + dx;
+              let targetY = startPos.y + dy;
+
+              if (snapToGrid) {
+                targetX = Math.round(targetX / GRID_SIZE) * GRID_SIZE;
+                targetY = Math.round(targetY / GRID_SIZE) * GRID_SIZE;
+              }
+
+              if (isSingleDrag && snapToObject) {
+                const SNAP_DISTANCE = 15;
+                let closestXDist = SNAP_DISTANCE;
+                let closestYDist = SNAP_DISTANCE;
+
+                y.bins.forEach((otherB) => {
+                  if (otherB.id === b.id) return;
+
+                  const diffX = Math.abs(targetX - otherB.x);
+                  if (diffX < closestXDist) {
+                    closestXDist = diffX;
+                    targetX = otherB.x;
+                  }
+
+                  const diffY = Math.abs(targetY - otherB.y);
+                  if (diffY < closestYDist) {
+                    closestYDist = diffY;
+                    targetY = otherB.y;
+                  }
+                });
+              }
+
+              return { ...b, x: targetX, y: targetY };
+            }),
+          };
+        }),
+      }));
+    } else if (panInfoRef.current.active) {
+      setView({
+        ...view,
+        x: mouseX - panInfoRef.current.start.x,
+        y: mouseY - panInfoRef.current.start.y,
+      });
+    }
+  };
+
+  const handleMouseUp = (e?: React.MouseEvent<HTMLCanvasElement>) => {
+    dragInfoRef.current.active = false;
+    panInfoRef.current.active = false;
+    resizeInfoRef.current.active = false;
+
+    if (selectionBox) {
+      const ids = getAssetsInSelectionBox(selectionBox);
+      const isShift = e ? e.shiftKey : false;
+
+      if (isShift) {
+        const union = [...selectedAssetIds];
+        ids.forEach((id) => {
+          if (!union.includes(id)) {
+            union.push(id);
+          }
+        });
+        handleSetSelectedAssetIds(union);
+      } else {
+        handleSetSelectedAssetIds(ids);
+      }
+      setSelectionBox(null);
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const worldPos = screenToWorld(mouseX, mouseY);
+
+    const factor = e.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = Math.min(Math.max(view.scale * factor, 0.1), 10);
+    setView({
+      x: mouseX - worldPos.x * newScale,
+      y: mouseY - worldPos.y * newScale,
+      scale: newScale,
+    });
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || !activeYard) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const worldPos = screenToWorld(mouseX, mouseY);
+
+    const clickedBin = [...activeYard.bins].reverse().find((b) => {
+      if (b.type !== 'bin') return false;
+      const r = (parseFloat(b.diameter) / 2) * BASE_SCALE;
+      return Math.sqrt(Math.pow(worldPos.x - b.x, 2) + Math.pow(worldPos.y - b.y, 2)) < r;
+    });
+
+    if (clickedBin) {
+      onSelectBinInEstimator(clickedBin.id);
+    }
+  };
+
+  const resetView = () => {
+    if (!activeYard || !activeYard.bins || activeYard.bins.length === 0) {
+      setView({ x: 0, y: 0, scale: 1.0 });
+      return;
+    }
+
+    // Prioritize centering on actual standard grain bins. If none, fall back to all items (markers, zones, etc.)
+    let targetBins = activeYard.bins.filter((b) => b.type === 'bin');
+    if (targetBins.length === 0) {
+      targetBins = activeYard.bins;
+    }
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    targetBins.forEach((b) => {
+      let rX = 0;
+      let rY = 0;
+      if (b.type === 'zone') {
+        rX = ((parseFloat((b as any).width) || 20) * BASE_SCALE) / 2;
+        rY = ((parseFloat((b as any).height) || 20) * BASE_SCALE) / 2;
+      } else {
+        const dia = parseFloat((b as any).diameter) || (b.type === 'junction-box' ? 6 : 5);
+        rX = (dia / 2) * BASE_SCALE;
+        rY = (dia / 2) * BASE_SCALE;
+      }
+
+      minX = Math.min(minX, b.x - rX);
+      maxX = Math.max(maxX, b.x + rX);
+      minY = Math.min(minY, b.y - rY);
+      maxY = Math.max(maxY, b.y + rY);
+    });
+
+    const boxWidth = maxX - minX;
+    const boxHeight = maxY - minY;
+
+    // Use a comfortable safety padding around the items
+    const padding = 60;
+    const targetWidth = dimensions.width - 2 * padding;
+    const targetHeight = dimensions.height - 2 * padding;
+
+    let scale = 1.0;
+    if (boxWidth > 0 && boxHeight > 0) {
+      const scaleX = targetWidth / boxWidth;
+      const scaleY = targetHeight / boxHeight;
+      // Clamp scale to a reasonable and usable visual range (e.g., 0.3x to 2.5x zoom)
+      scale = Math.max(0.3, Math.min(2.5, Math.min(scaleX, scaleY)));
+    }
+
+    const boxCenterX = (minX + maxX) / 2;
+    const boxCenterY = (minY + maxY) / 2;
+
+    const viewX = dimensions.width / 2 - boxCenterX * scale;
+    const viewY = dimensions.height / 2 - boxCenterY * scale;
+
+    setView({ x: viewX, y: viewY, scale });
+  };
+
+  return (
+    <div id="view-planner" className="flex-1 flex h-full w-full overflow-hidden">
+      {/* Planner Sidebar */}
+      <aside className="w-52 bg-neutral-950 border-r border-neutral-900 flex flex-col z-10 shrink-0">
+        <div className="flex-grow overflow-y-auto p-3.5 space-y-4 bg-neutral-950 custom-scrollbar">
+          {/* Planner Tools Section */}
+          <section>
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-2 flex items-center gap-2">
+              Planner Tools
+            </h2>
+            <div className="grid grid-cols-2 gap-1.5 w-full">
+              <button
+                onClick={() => setSelectionMode('select')}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border transition-all text-xs font-bold cursor-pointer ${
+                  selectionMode === 'select'
+                    ? 'border-amber-500 bg-amber-500/20 text-amber-500'
+                    : 'border-neutral-800 bg-neutral-900 hover:border-amber-500/50 hover:bg-amber-500/5 text-neutral-400'
+                }`}
+                title="Select and Drag assets. Shift+Click or drag box to select multiple."
+              >
+                <span className="font-bold text-xs">🖱️</span>
+                <span className="text-[10px] font-bold">Select</span>
+              </button>
+              <button
+                onClick={() => setSelectionMode('pan')}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border transition-all text-xs font-bold cursor-pointer ${
+                  selectionMode === 'pan'
+                    ? 'border-amber-500 bg-amber-500/20 text-amber-500'
+                    : 'border-neutral-800 bg-neutral-900 hover:border-amber-500/50 hover:bg-amber-500/5 text-neutral-400'
+                }`}
+                title="Pan Canvas. Click and drag background to pan."
+              >
+                <span className="font-bold text-xs">✋</span>
+                <span className="text-[10px] font-bold">Pan</span>
+              </button>
+            </div>
+
+            {/* Distribution Quick Tools */}
+            <div className="mt-2.5 space-y-1">
+              <div className="text-[9px] font-black text-amber-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                <span>Distribution Tools</span>
+                <span className="text-[8.5px] text-neutral-500 font-normal">
+                  {selectedAssetIds.length >= 2 ? `${selectedAssetIds.length} Sel` : 'All Bins'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => handleDistributeAssets('horizontal')}
+                  className="py-1.5 px-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                  title={
+                    selectedAssetIds.length >= 2
+                      ? `Distribute ${selectedAssetIds.length} selected assets evenly horizontally`
+                      : 'Distribute all grain bins evenly horizontally'
+                  }
+                >
+                  <span>↔️</span>
+                  <span>Horizontally</span>
+                </button>
+                <button
+                  onClick={() => handleDistributeAssets('vertical')}
+                  className="py-1.5 px-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                  title={
+                    selectedAssetIds.length >= 2
+                      ? `Distribute ${selectedAssetIds.length} selected assets evenly vertically`
+                      : 'Distribute all grain bins evenly vertically'
+                  }
+                >
+                  <span>↕️</span>
+                  <span>Vertically</span>
+                </button>
+              </div>
+            </div>
+
+            {selectedAssetIds.length > 1 && (
+              <div className="mt-2.5 p-2 bg-neutral-900 border border-neutral-800 rounded-lg space-y-2">
+                <div className="text-[10px] text-neutral-400 font-bold flex justify-between items-center">
+                  <span>{selectedAssetIds.length} Assets Selected</span>
+                  <button
+                    onClick={() => handleSetSelectedAssetIds([])}
+                    className="text-[9px] text-neutral-500 hover:text-neutral-300 font-normal underline cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                </div>
+
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={handleDuplicateAsset}
+                    className="flex-1 py-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 rounded text-[10px] font-extrabold transition-colors cursor-pointer text-center"
+                    title="Duplicate selected assets"
+                  >
+                    Duplicate
+                  </button>
+                  <button
+                    onClick={handleDeleteAsset}
+                    className="flex-1 py-1 bg-red-950/40 hover:bg-red-950/60 text-red-400 border border-red-900/50 rounded text-[10px] font-extrabold transition-colors cursor-pointer text-center"
+                    title="Delete selected assets"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Markers and Zones */}
+          <section>
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-2 flex items-center gap-2">
+              Markers &amp; Zones
+            </h2>
+            <div className="space-y-2">
+              {/* Squeezed quick-add grid of stacked buttons */}
+              <div className="flex flex-col gap-1.5 w-full">
+                <button
+                  onClick={() => handleAddSpecialMarker('chester-x')}
+                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-neutral-800 bg-neutral-900 hover:border-red-500/50 hover:bg-red-500/5 text-red-500 text-xs font-bold transition-all cursor-pointer text-left"
+                  title="Quick Add Chester-X"
+                >
+                  <span className="font-black text-sm w-4 text-center shrink-0">X</span>
+                  <span className="text-neutral-300 font-bold text-[11px]">Chester-X</span>
+                </button>
+                <button
+                  onClick={() => handleAddSpecialMarker('chester-x1')}
+                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-neutral-800 bg-neutral-900 hover:border-blue-500/50 hover:bg-blue-500/5 text-blue-400 text-xs font-bold transition-all cursor-pointer text-left"
+                  title="Quick Add Chester-X1"
+                >
+                  <span className="font-black text-sm w-4 text-center shrink-0">X1</span>
+                  <span className="text-neutral-300 font-bold text-[11px]">Chester-X1</span>
+                </button>
+                <button
+                  onClick={handleAddZoneBox}
+                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-neutral-800 bg-neutral-900 hover:border-amber-500/50 hover:bg-amber-500/5 text-amber-500 text-xs font-bold transition-all cursor-pointer text-left"
+                  title="Quick Add Zone Box"
+                >
+                  <div className="w-4 flex justify-center shrink-0">
+                    <svg
+                      className="w-3.5 h-3.5 text-amber-500"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="4 3" />
+                    </svg>
+                  </div>
+                  <span className="text-neutral-300 font-bold text-[11px]">Zone Box</span>
+                </button>
+                <button
+                  onClick={() => handleAddSpecialMarker('junction-box')}
+                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-neutral-800 bg-neutral-900 hover:border-emerald-500/50 hover:bg-emerald-500/5 text-emerald-400 text-xs font-bold transition-all cursor-pointer text-left"
+                  title="Quick Add Junction Box"
+                >
+                  <span className="font-black text-[11px] w-4 text-center shrink-0">JB</span>
+                  <span className="text-neutral-300 font-bold text-[11px]">Junction Box</span>
+                </button>
+                <button
+                  onClick={() => handleAddSpecialMarker('fan-control')}
+                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-neutral-800 bg-neutral-900 hover:border-purple-500/50 hover:bg-purple-500/5 text-purple-400 text-xs font-bold transition-all cursor-pointer text-left"
+                  title="Quick Add Fan Control"
+                >
+                  <span className="font-black text-[11px] w-4 text-center shrink-0">FC</span>
+                  <span className="text-neutral-300 font-bold text-[11px]">Fan Control</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (wiringState?.active) {
+                      setWiringState(null);
+                    } else {
+                      setWiringState({ active: true, fromAssetId: null, toAssetId: null });
+                      onSelectAsset(null);
+                    }
+                  }}
+                  className={`flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border transition-all text-xs font-bold text-left cursor-pointer ${
+                    wiringState?.active
+                      ? 'border-purple-500 bg-purple-500/20 text-purple-400'
+                      : 'border-neutral-800 bg-neutral-900 hover:border-purple-500/50 hover:bg-purple-500/5 text-purple-400'
+                  }`}
+                  title="String electrical/signal wire from one bin or marker to a junction box"
+                >
+                  <span className="font-black text-sm w-4 text-center shrink-0">⚡</span>
+                  <span className="text-neutral-300 font-bold text-[11px]">
+                    {wiringState?.active ? 'Cancel Wiring' : 'String Wire Tool'}
+                  </span>
+                </button>
+                {activeYard && activeYard.wires && activeYard.wires.length > 0 && (
+                  <button
+                    onClick={() => {
+                      onUpdateProject((prev) => ({
+                        ...prev,
+                        yards: prev.yards.map((y) => {
+                          if (y.id !== prev.activeYardId) return y;
+                          return { ...y, wires: [] };
+                        }),
+                      }));
+                    }}
+                    className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-red-950 bg-red-950/20 hover:border-red-500/50 hover:bg-red-500/5 text-red-400 text-xs font-bold transition-all cursor-pointer text-left"
+                    title="Clear all wire connections on this yard"
+                  >
+                    <span className="font-black text-sm w-4 text-center shrink-0">🗑️</span>
+                    <span className="text-neutral-300 font-bold text-[11px]">Clear Wires</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Add Bin Presets */}
+          <section>
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-2 flex items-center gap-2">
+              Add Bin Unit
+            </h2>
+            <div className="relative mb-2">
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={addBinSearchText}
+                  onChange={(e) => {
+                    setAddBinSearchText(e.target.value);
+                    setIsAddBinSuggestionsOpen(true);
+                  }}
+                  onFocus={() => setIsAddBinSuggestionsOpen(true)}
+                  onBlur={() => setTimeout(() => setIsAddBinSuggestionsOpen(false), 200)}
+                  placeholder="Type model"
+                  className="w-full bg-neutral-900 border border-neutral-800 text-amber-400 font-bold text-xs p-2.5 pl-8 rounded-lg outline-none focus:border-amber-500 placeholder-neutral-500 shadow-sm"
+                />
+                <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 pointer-events-none" />
+                {addBinSearchText && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setAddBinSearchText('');
+                      setIsAddBinSuggestionsOpen(false);
+                    }}
+                    className="absolute right-2.5 text-neutral-500 hover:text-amber-400 font-bold text-xs cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Suggestions Popover for Add Bin */}
+              {isAddBinSuggestionsOpen && addBinSearchText.trim().length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-neutral-900 border border-amber-500/40 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-neutral-800 p-1">
+                  {addBinSuggestions.length > 0 ? (
+                    addBinSuggestions.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          handleAddBinFromModel(m);
+                          setAddBinSearchText('');
+                          setIsAddBinSuggestionsOpen(false);
+                        }}
+                        className="w-full text-left p-2 hover:bg-amber-500/15 rounded-lg transition-colors flex items-center justify-between group cursor-pointer"
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5 font-bold text-xs text-amber-400 group-hover:text-amber-300">
+                            <span className="text-neutral-400 font-medium">{m.manufacturer}</span>
+                            <span className="text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">{m.modelNumber}</span>
+                          </div>
+                          <div className="text-[10px] text-neutral-400 mt-0.5">
+                            {m.diameterFt}' dia × {m.eaveHeightFt}' eave • <span className="text-neutral-500">{m.category}</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-amber-400 bg-amber-500/20 group-hover:bg-amber-500 group-hover:text-neutral-950 px-2 py-1 rounded-md transition-colors shrink-0">
+                          + Add
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="p-3 text-center text-xs text-neutral-400 italic">
+                      No matching model found for "{addBinSearchText}"
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div id="bin-presets" className="flex flex-col gap-1.5 w-full">
+              {BIN_SIZES.map((size) => (
+                <button
+                  key={size}
+                  onClick={() => handleAddBin(size)}
+                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-neutral-800 bg-neutral-900 hover:border-amber-500/50 hover:bg-amber-500/5 text-amber-500 transition-all cursor-pointer group text-left text-xs font-bold"
+                  title={`Add ${size}' Grain Bin`}
+                >
+                  <div className="rounded-full border border-amber-500/40 group-hover:border-amber-500 transition-colors w-3 h-3 border-2 shrink-0"></div>
+                  <span className="text-neutral-300 group-hover:text-amber-400 font-bold text-[11px]">{size}' Quick Preset</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Properties Panel */}
+          <div id="properties-panel">
+            {selectedAsset ? (
+              <div className="bg-neutral-200 p-3.5 rounded-xl border border-neutral-350 space-y-3.5 text-neutral-900">
+                <h2 className="text-xs font-black uppercase tracking-widest text-neutral-800">
+                  {selectedAsset.type === 'bin'
+                    ? 'Grain Bin Properties'
+                    : selectedAsset.type === 'zone'
+                    ? 'Zone Properties'
+                    : selectedAsset.type === 'junction-box'
+                    ? 'Junction Box Properties'
+                    : selectedAsset.type === 'fan-control'
+                    ? 'Fan Control Properties'
+                    : 'Marker Properties'}
+                </h2>
+
+                <div>
+                  <label className="text-[9px] uppercase font-bold text-neutral-600 mb-1 block">Label / Name</label>
+                  <input
+                    type="text"
+                    value={selectedAsset.name}
+                    onChange={(e) => handleUpdateAssetProperty('name', e.target.value)}
+                    className="w-full bg-neutral-100 border border-neutral-300 rounded-lg p-2.5 text-neutral-900 focus:border-amber-500 outline-none text-sm font-bold shadow-sm"
+                  />
+                </div>
+
+                {selectedAsset.type === 'bin' && (
+                  <div className="bg-amber-500/10 rounded-xl p-3 border border-amber-500/30 space-y-2 relative">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[9px] uppercase font-black text-amber-900 block tracking-wider">
+                        Model Number / Spec
+                      </label>
+                      {(selectedAsset as BinAsset).manufacturer && (
+                        <span className="text-[9px] font-bold text-amber-900 bg-amber-200 px-2 py-0.5 rounded-full border border-amber-300">
+                          {(selectedAsset as BinAsset).manufacturer}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={propModelSearchText}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPropModelSearchText(val);
+                          setIsPropModelSuggestionsOpen(true);
+                          handleApplyModelNumber(val);
+                        }}
+                        onFocus={() => setIsPropModelSuggestionsOpen(true)}
+                        onBlur={() => setTimeout(() => setIsPropModelSuggestionsOpen(false), 200)}
+                        placeholder="Type model"
+                        className="w-full bg-white border border-amber-400 rounded-lg p-2.5 text-neutral-900 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm font-bold shadow-sm"
+                      />
+
+                      {/* Suggestions Popover for Bin Property */}
+                      {isPropModelSuggestionsOpen && propModelSearchText.trim().length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-neutral-900 border border-amber-500/50 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-neutral-800 p-1">
+                          {propModelSuggestions.length > 0 ? (
+                            propModelSuggestions.map((m) => (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  setPropModelSearchText(m.modelNumber);
+                                  handleApplyModelFromSpec(m);
+                                  setIsPropModelSuggestionsOpen(false);
+                                }}
+                                className="w-full text-left p-2 hover:bg-amber-500/20 rounded-lg transition-colors flex items-center justify-between group cursor-pointer"
+                              >
+                                <div>
+                                  <div className="flex items-center gap-1.5 font-bold text-xs text-amber-400 group-hover:text-amber-300">
+                                    <span className="text-neutral-300 font-medium">{m.manufacturer}</span>
+                                    <span className="text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/40">{m.modelNumber}</span>
+                                  </div>
+                                  <div className="text-[10px] text-neutral-400 mt-0.5">
+                                    {m.diameterFt}' dia × {m.eaveHeightFt}' eave ({m.category})
+                                  </div>
+                                </div>
+                                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/20 group-hover:bg-amber-500 group-hover:text-neutral-950 px-2 py-1 rounded-md transition-colors shrink-0">
+                                  Select
+                                </span>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="p-3 text-center text-xs text-neutral-400 italic">
+                              No matching model in spec database
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {matchedModel ? (
+                      <div className="bg-amber-100/90 rounded-lg p-2.5 border border-amber-300 text-[10px] space-y-1 text-amber-950 shadow-sm">
+                        <div className="flex items-center justify-between font-black text-amber-900">
+                          <span className="flex items-center gap-1">
+                            <span className="text-amber-700 font-bold">✓</span>
+                            <span>{matchedModel.manufacturer} {matchedModel.modelNumber}</span>
+                          </span>
+                          <span className="text-[9px] bg-amber-200 px-1.5 py-0.5 rounded font-bold border border-amber-300">
+                            Spec Adapted
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-neutral-700 font-medium pt-1">
+                          <div>Diameter: <strong className="text-neutral-900">{matchedModel.diameterFt}'</strong></div>
+                          <div>Eave Ht: <strong className="text-neutral-900">{matchedModel.eaveHeightFt}'</strong></div>
+                          <div>Total Ht: <strong className="text-neutral-900">{matchedModel.totalHeightFt}'</strong></div>
+                          <div>Type: <strong className="text-neutral-900">{matchedModel.category}</strong></div>
+                          {matchedModel.capacityBushels > 0 && (
+                            <div className="col-span-2 text-amber-900 font-bold">
+                              Capacity: {matchedModel.capacityBushels.toLocaleString()} bu
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (selectedAsset as BinAsset).modelNumber ? (
+                      <p className="text-[10px] text-amber-900/80 font-medium italic">
+                        Custom model number set. Start typing above to search and adapt to a spec from library.
+                      </p>
+                    ) : null}
+                  </div>
+                )}
+
+                {selectedAsset.type === 'bin' && (
+                  <>
+                    <div className="bg-neutral-300/60 rounded-xl p-4 border border-neutral-300/30 space-y-3">
+                      <p className="text-[9px] font-black uppercase text-neutral-700 tracking-wider">Dimensions</p>
+                      <div>
+                        <label className="text-[9px] uppercase font-bold text-neutral-600 mb-1 block">Diameter (ft)</label>
+                        <input
+                          type="number"
+                          value={(selectedAsset as BinAsset).diameter}
+                          onChange={(e) => handleUpdateAssetProperty('diameter', e.target.value)}
+                          className="w-full bg-neutral-100 border border-neutral-300 rounded-lg p-2.5 text-neutral-900 focus:border-amber-500 outline-none text-sm font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] uppercase font-bold text-neutral-600 mb-1 block">
+                          Eave Height (ft)
+                        </label>
+                        <input
+                          type="number"
+                          value={(selectedAsset as BinAsset).eaveHeight}
+                          onChange={(e) => handleUpdateAssetProperty('eaveHeight', e.target.value)}
+                          className="w-full bg-neutral-100 border border-neutral-300 rounded-lg p-2.5 text-neutral-900 focus:border-amber-500 outline-none text-sm font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] uppercase font-bold text-neutral-600 mb-1 block">
+                          Total Height (ft)
+                        </label>
+                        <input
+                          type="number"
+                          value={(selectedAsset as BinAsset).totalHeight}
+                          onChange={(e) => handleUpdateAssetProperty('totalHeight', e.target.value)}
+                          className="w-full bg-neutral-100 border border-neutral-300 rounded-lg p-2.5 text-neutral-900 focus:border-amber-500 outline-none text-sm font-semibold"
+                        />
+                      </div>
+                      <div className="pt-3 border-t border-neutral-300/70 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] uppercase font-bold text-neutral-600 tracking-wider">
+                            Bin Bottom Style
+                          </label>
+                          <span className="text-[9px] font-extrabold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300/60">
+                            {(selectedAsset as BinAsset).isHopper ? 'Hopper Bottom' : 'Flat Bottom'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1 p-1 bg-neutral-200/90 border border-neutral-300/80 rounded-xl shadow-inner">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateAssetProperty('isHopper', false)}
+                            className={`py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                              !(selectedAsset as BinAsset).isHopper
+                                ? 'bg-amber-500 text-neutral-950 font-black shadow-md border border-amber-400'
+                                : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-300/50'
+                            }`}
+                          >
+                            Flat Bottom
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateAssetProperty('isHopper', true)}
+                            className={`py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                              (selectedAsset as BinAsset).isHopper
+                                ? 'bg-amber-500 text-neutral-950 font-black shadow-md border border-amber-400'
+                                : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-300/50'
+                            }`}
+                          >
+                            Hopper Bottom
+                          </button>
+                        </div>
+                        {(selectedAsset as BinAsset).isHopper && (
+                          <div className="pt-1.5 space-y-1 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20">
+                            <label className="text-[10px] uppercase font-black text-amber-900 block tracking-wider">
+                              Hopper Cone Height (ft)
+                            </label>
+                            <div className="relative flex items-center">
+                              <input
+                                type="number"
+                                value={(selectedAsset as BinAsset).hopperConeHeight || '8'}
+                                onChange={(e) => handleUpdateAssetProperty('hopperConeHeight', e.target.value)}
+                                className="w-full bg-white border border-amber-400 rounded-lg p-2 text-amber-950 font-bold focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm pr-8 shadow-sm"
+                                placeholder="8"
+                              />
+                              <span className="absolute right-3 text-xs font-bold text-amber-800 pointer-events-none">ft</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                     <div className="bg-amber-500/10 rounded-xl p-3 border border-amber-500/20 space-y-2">
+                      <p className="text-[9px] font-black uppercase text-amber-800 tracking-wider">Cable Lengths</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-neutral-700 font-medium">Center Cable:</span>
+                        <span id="prop-center-cable" className="text-xs font-black text-amber-800">
+                          {(selectedAsset as BinAsset).centerCable
+                             ? (selectedAsset as BinAsset).centerCable + "'"
+                            : '—'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-neutral-700 font-medium">Radius Cable:</span>
+                        <span id="prop-radius-cable" className="text-xs font-black text-amber-800">
+                          {(selectedAsset as BinAsset).radiusCable
+                            ? (selectedAsset as BinAsset).radiusCable + "'"
+                            : '—'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => onSelectBinInEstimator(selectedAsset.id)}
+                      className="w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-black rounded-xl font-black text-[9px] uppercase flex items-center justify-center gap-1 transition-all shadow-lg shadow-amber-400/15 cursor-pointer"
+                    >
+                      Design Cables (Double-click Bin)
+                    </button>
+                  </>
+                )}
+
+                {selectedAsset.type === 'zone' && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-neutral-600 mb-1.5 block">Width (ft)</label>
+                      <input
+                        type="number"
+                        value={(selectedAsset as ZoneAsset).width}
+                        onChange={(e) => handleUpdateAssetProperty('width', e.target.value)}
+                        className="w-full bg-neutral-100 border border-neutral-300 rounded-lg p-2.5 text-neutral-900 focus:border-amber-500 outline-none text-sm font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-neutral-600 mb-1.5 block">Height (ft)</label>
+                      <input
+                        type="number"
+                        value={(selectedAsset as ZoneAsset).height}
+                        onChange={(e) => handleUpdateAssetProperty('height', e.target.value)}
+                        className="w-full bg-neutral-100 border border-neutral-300 rounded-lg p-2.5 text-neutral-900 focus:border-amber-500 outline-none text-sm font-semibold"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {selectedAsset.type !== 'bin' && selectedAsset.type !== 'zone' && (
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-neutral-600 mb-1.5 block">Marker Size</label>
+                    <input
+                      type="number"
+                      value={(selectedAsset as MarkerAsset).diameter}
+                      onChange={(e) => handleUpdateAssetProperty('diameter', e.target.value)}
+                      className="w-full bg-neutral-100 border border-neutral-300 rounded-lg p-2.5 text-neutral-900 focus:border-amber-500 outline-none text-sm font-semibold"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-[9px] uppercase font-bold text-neutral-600 mb-1 block">Notes</label>
+                  <textarea
+                    rows={6}
+                    value={selectedAsset.notes}
+                    onChange={(e) => handleUpdateAssetProperty('notes', e.target.value)}
+                    className="w-full bg-neutral-100 border border-neutral-300 rounded-lg p-2 text-neutral-900 focus:border-amber-500 outline-none text-xs resize-y min-h-[120px] font-semibold"
+                  ></textarea>
+                </div>
+                <button
+                  onClick={handleDeleteAsset}
+                  className="w-full py-2 bg-red-100 text-red-600 border border-red-200 rounded-lg hover:bg-red-200 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <Trash2 size={12} />
+                  Remove Unit
+                </button>
+              </div>
+            ) : (
+              <div className="p-8 rounded-2xl border border-dashed border-neutral-300 text-center text-neutral-500 bg-neutral-200">
+                <p className="text-xs font-medium uppercase tracking-wider leading-relaxed text-neutral-500">
+                  Select item to configure
+                  <br />
+                  <span className={snapToGrid ? 'text-amber-600 font-bold' : 'text-neutral-500'}>
+                    {snapToGrid ? 'Auto-snap active' : 'Snapping disabled'}
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* Planner Workspace Canvas */}
+      <div ref={containerRef} className="flex-grow relative bg-zinc-900 overflow-hidden h-full">
+        <canvas
+          ref={canvasRef}
+          width={dimensions.width}
+          height={dimensions.height}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={() => {
+            handleMouseUp();
+            setHoveredBin(null);
+            setHoverPos(null);
+          }}
+          onWheel={handleWheel}
+          onDoubleClick={handleDoubleClick}
+        />
+
+        {/* Hover Information Tooltip */}
+        {hoveredBin && hoverPos && (() => {
+          let posX = hoverPos.x + 16;
+          let posY = hoverPos.y + 16;
+          if (posX + 256 > dimensions.width) {
+            posX = hoverPos.x - 272;
+          }
+          if (posY + 220 > dimensions.height) {
+            posY = Math.max(10, dimensions.height - 240);
+          }
+          return (
+            <div
+              className="absolute z-50 pointer-events-none bg-neutral-950/95 backdrop-blur-md border border-neutral-800 rounded-xl p-3 shadow-2xl text-white text-xs w-64 select-none animate-fade-in"
+              style={{
+                left: posX,
+                top: posY,
+              }}
+            >
+              {hoveredBin.type === 'bin' && (
+                <>
+                  <div className="flex items-center justify-between border-b border-neutral-800 pb-1.5 mb-2">
+                    <span className="font-extrabold tracking-wide text-amber-400 text-sm">{hoveredBin.name || 'Unnamed Bin'}</span>
+                    <span className="text-[10px] bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded font-mono uppercase tracking-wider">Grain Bin</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                    {hoveredBin.modelNumber && (
+                      <div className="flex items-center justify-between col-span-2 border-b border-neutral-900 pb-1 mb-1 text-amber-400 font-bold">
+                        <span className="text-neutral-500 font-semibold">Model #:</span>
+                        <span className="truncate ml-1">{hoveredBin.manufacturer ? `${hoveredBin.manufacturer} ` : ''}{hoveredBin.modelNumber}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-500 font-semibold">Diameter:</span>
+                      <span className="font-mono text-neutral-200 font-bold">{hoveredBin.diameter ? `${hoveredBin.diameter}'` : '-'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-500 font-semibold">Rings:</span>
+                      <span className="font-mono text-neutral-200 font-bold">{hoveredBin.rings || '-'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-500 font-semibold">Eave Ht:</span>
+                      <span className="font-mono text-neutral-200 font-bold">{hoveredBin.eaveHeight ? `${hoveredBin.eaveHeight}'` : '-'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-500 font-semibold">Total Ht:</span>
+                      <span className="font-mono text-neutral-200 font-bold">{hoveredBin.totalHeight ? `${hoveredBin.totalHeight}'` : '-'}</span>
+                    </div>
+                    <div className="flex items-center justify-between col-span-2 border-t border-neutral-900 pt-1 mt-1">
+                      <span className="text-neutral-500 font-semibold">Center Cable:</span>
+                      <span className="font-mono text-amber-500/90 font-bold">{hoveredBin.centerCable ? `${hoveredBin.centerCable}'` : '-'}</span>
+                    </div>
+                    <div className="flex items-center justify-between col-span-2">
+                      <span className="text-neutral-500 font-semibold">Radius Cable:</span>
+                      <span className="font-mono text-amber-500/90 font-bold">{hoveredBin.radiusCable ? `${hoveredBin.radiusCable}'` : '-'}</span>
+                    </div>
+                    {hoveredBin.floorThick && hoveredBin.floorThick !== '0' && (
+                      <div className="flex items-center justify-between col-span-2">
+                        <span className="text-neutral-500 font-semibold">Floor Thick:</span>
+                        <span className="font-mono text-neutral-200 font-bold">{hoveredBin.floorThick}"</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {hoveredBin.notes && (
+                    <div className="mt-2 pt-1.5 border-t border-neutral-800 text-[10px] text-neutral-400 italic break-words leading-relaxed">
+                      {hoveredBin.notes}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {hoveredBin.type === 'zone' && (
+                <>
+                  <div className="flex items-center justify-between border-b border-neutral-800 pb-1.5 mb-2">
+                    <span className="font-extrabold tracking-wide text-amber-400 text-sm">{hoveredBin.name || 'Zone'}</span>
+                    <span className="text-[10px] bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded font-mono uppercase tracking-wider">Zone</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-y-1 text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-500 font-semibold">Width:</span>
+                      <span className="font-mono text-neutral-200 font-bold">{hoveredBin.width ? `${hoveredBin.width}'` : '-'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-500 font-semibold">Height:</span>
+                      <span className="font-mono text-neutral-200 font-bold">{hoveredBin.height ? `${hoveredBin.height}'` : '-'}</span>
+                    </div>
+                  </div>
+
+                  {hoveredBin.notes && (
+                    <div className="mt-2 pt-1.5 border-t border-neutral-800 text-[10px] text-neutral-400 italic break-words leading-relaxed">
+                      {hoveredBin.notes}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {hoveredBin.type !== 'bin' && hoveredBin.type !== 'zone' && (
+                <>
+                  <div className="flex items-center justify-between border-b border-neutral-800 pb-1.5 mb-2">
+                    <span className="font-extrabold tracking-wide text-amber-400 text-sm">{hoveredBin.name || 'Marker'}</span>
+                    <span className="text-[10px] bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
+                      {hoveredBin.type === 'chester-x' ? 'Chester-X' : hoveredBin.type === 'chester-x1' ? 'Chester-X1' : hoveredBin.type === 'junction-box' ? 'J-Box' : hoveredBin.type === 'fan-control' ? 'Fan Ctrl' : 'Marker'}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-y-1 text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-500 font-semibold">Size:</span>
+                      <span className="font-mono text-neutral-200 font-bold">{hoveredBin.diameter ? `${hoveredBin.diameter}'` : '-'}</span>
+                    </div>
+                  </div>
+
+                  {hoveredBin.notes && (
+                    <div className="mt-2 pt-1.5 border-t border-neutral-800 text-[10px] text-neutral-400 italic break-words leading-relaxed">
+                      {hoveredBin.notes}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Yard Indicator / Quick Switcher HUD */}
+        <div className="absolute top-6 left-6 flex flex-wrap items-center gap-3">
+          <div className="bg-neutral-950/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-neutral-900 shadow-xl flex items-center gap-3">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Yard:</span>
+              <select
+                value={project.activeYardId || ''}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  onUpdateProject((prev) => ({ ...prev, activeYardId: val }));
+                  onSelectAsset(null);
+                }}
+                className="bg-transparent text-xs font-black text-white outline-none cursor-pointer"
+              >
+                {project.yards.map((yard) => (
+                  <option key={yard.id} value={yard.id} className="bg-neutral-950 text-white">
+                    {yard.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {activeYard?.location && (
+            <div className="bg-neutral-950/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-neutral-900 shadow-xl flex items-center gap-2 max-w-[200px] sm:max-w-[300px]">
+              <MapPin size={12} className="text-amber-400 shrink-0" />
+              <span className="text-[10px] font-bold text-neutral-300 truncate uppercase tracking-widest">
+                {activeYard.location}
+              </span>
+            </div>
+          )}
+          <div className="bg-neutral-950/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-neutral-900 shadow-xl flex items-center gap-2">
+            <span id="scale-indicator" className="text-[10px] font-bold text-neutral-300 uppercase tracking-widest">
+              {Math.round(view.scale * 100)}% Scale
+            </span>
+          </div>
+
+          {selectedAssetIds.length >= 2 && (
+            <div className="bg-amber-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-amber-500/40 shadow-xl flex items-center gap-2">
+              <span className="text-[10px] font-extrabold text-amber-300 uppercase tracking-widest flex items-center gap-1">
+                <span>{selectedAssetIds.length} Selected</span>
+              </span>
+              <div className="h-3.5 w-px bg-amber-500/30 mx-0.5" />
+              <button
+                onClick={() => handleDistributeAssets('horizontal')}
+                className="bg-amber-400 hover:bg-amber-300 text-black px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow cursor-pointer flex items-center gap-1"
+                title="Distribute selected objects evenly horizontally"
+              >
+                <span>↔️</span>
+                <span>Distribute Horizontally</span>
+              </button>
+              <button
+                onClick={() => handleDistributeAssets('vertical')}
+                className="bg-neutral-900 hover:bg-neutral-800 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
+                title="Distribute selected objects evenly vertically"
+              >
+                <span>↕️</span>
+                <span>Distribute Vertically</span>
+              </button>
+            </div>
+          )}
+          {wiringState?.active ? (
+            <div className="bg-purple-950/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-purple-500/30 shadow-xl flex items-center gap-2 animate-pulse">
+              <span className="text-purple-400">⚡</span>
+              <span className="text-[10px] font-black text-purple-300 uppercase tracking-widest">
+                {wiringState.fromAssetId === null
+                  ? 'Wiring Mode: Click on any Unit to START'
+                  : 'Wiring Mode: Click destination Unit to CONNECT'}
+              </span>
+              <button
+                onClick={() => setWiringState(null)}
+                className="ml-2 hover:bg-purple-900 text-purple-300 rounded px-1.5 py-0.5 text-[9px] font-black border border-purple-400/30 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="hidden sm:flex bg-neutral-950/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-neutral-900 shadow-xl items-center gap-2">
+              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">
+                Click Bin to Design Cables
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Create Wire Connection Label Overlay */}
+        {wiringState?.active && wiringState.showLabelInput && wiringState.fromAssetId !== null && wiringState.toAssetId !== null && (
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-neutral-950 border border-neutral-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-fade-in text-white">
+              <div className="flex items-center gap-2.5 mb-4 border-b border-neutral-900 pb-3">
+                <span className="text-xl">⚡</span>
+                <div>
+                  <h3 className="font-extrabold text-sm tracking-wide text-purple-400">Select Wire Connection Type</h3>
+                  <p className="text-[10px] text-neutral-500 font-medium">Choose a connection standard for this wire path</p>
+                </div>
+              </div>
+
+              <div className="space-y-3.5">
+                <button
+                  onClick={() => handleSaveWire('cat5')}
+                  className="w-full bg-blue-950/45 border border-blue-500/40 hover:border-blue-400 hover:bg-blue-950/60 p-4 rounded-xl text-left transition-all group flex items-start gap-3 cursor-pointer"
+                >
+                  <span className="text-lg text-blue-400 select-none pt-0.5">🔹</span>
+                  <div>
+                    <h4 className="font-bold text-xs text-blue-300 group-hover:text-blue-200">Cat5 Bin Wire</h4>
+                    <p className="text-[10px] text-neutral-400 font-medium mt-0.5">Standard blue signal & power cable for bin nodes</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleSaveWire('female-link')}
+                  className="w-full bg-rose-950/45 border border-rose-500/40 hover:border-rose-400 hover:bg-rose-950/60 p-4 rounded-xl text-left transition-all group flex items-start gap-3 cursor-pointer"
+                >
+                  <span className="text-lg text-rose-400 select-none pt-0.5">🔸</span>
+                  <div>
+                    <h4 className="font-bold text-xs text-rose-300 group-hover:text-rose-200">Female Link Cable</h4>
+                    <p className="text-[10px] text-neutral-400 font-medium mt-0.5 font-sans">Special pink/rose interconnect line</p>
+                  </div>
+                </button>
+
+                <div className="flex items-center justify-between text-[10px] text-neutral-500 font-mono bg-neutral-900/50 p-2 rounded-lg border border-neutral-900">
+                  <span>From: {activeYard.bins.find((b) => b.id === wiringState.fromAssetId)?.name || 'Unit A'}</span>
+                  <span>To: {activeYard.bins.find((b) => b.id === wiringState.toAssetId)?.name || 'Unit B'}</span>
+                </div>
+
+                <div className="flex pt-2">
+                  <button
+                    onClick={() => setWiringState(null)}
+                    className="w-full bg-neutral-900 hover:bg-neutral-800 text-neutral-400 border border-neutral-800 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Cancel Connection
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="absolute bottom-6 left-6 flex flex-wrap items-center gap-3">
+          <button
+            onClick={resetView}
+            className="bg-neutral-900 hover:bg-neutral-800 text-neutral-400 px-4 py-2.5 rounded-xl border border-neutral-800 transition-colors shadow-lg flex items-center gap-2 text-xs font-bold uppercase tracking-wider cursor-pointer"
+          >
+            Reset View
+          </button>
+          <button
+            onClick={() => setSnapToGrid(!snapToGrid)}
+            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider cursor-pointer shadow-lg ${
+              snapToGrid
+                ? 'bg-amber-400/10 border-amber-500/30 text-amber-400 hover:bg-amber-400/20'
+                : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:bg-neutral-800'
+            }`}
+            title="Toggle Snap to Grid Lines"
+          >
+            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${snapToGrid ? 'bg-amber-400 animate-pulse' : 'bg-neutral-600'}`} />
+            Grid Snap: {snapToGrid ? 'ON' : 'OFF'}
+          </button>
+          <button
+            onClick={() => setSnapToObject(!snapToObject)}
+            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider cursor-pointer shadow-lg ${
+              snapToObject
+                ? 'bg-amber-400/10 border-amber-500/30 text-amber-400 hover:bg-amber-400/20'
+                : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:bg-neutral-800'
+            }`}
+            title="Toggle Snap to Other Objects and Alignment Guidelines"
+          >
+            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${snapToObject ? 'bg-amber-400 animate-pulse' : 'bg-neutral-600'}`} />
+            Object Snap: {snapToObject ? 'ON' : 'OFF'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

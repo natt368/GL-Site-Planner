@@ -712,11 +712,11 @@ export default function App() {
       {showLanding ? (
         <div className="fixed inset-0 z-50 overflow-hidden text-zinc-100 flex flex-col items-center justify-center">
           {/* Locked Background Image Layer */}
-          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-neutral-950">
+          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-neutral-900">
             <img 
               src={landingBg} 
               alt="GrainLink Landing Background"
-              className="w-full h-full object-cover object-center brightness-90 scale-105 transition-transform duration-1000"
+              className="w-full h-full object-cover object-center brightness-95 contrast-105 scale-105 transition-transform duration-1000"
               referrerPolicy="no-referrer"
               onError={(e) => {
                 const target = e.currentTarget;
@@ -725,6 +725,9 @@ export default function App() {
                   target.src = `${import.meta.env.BASE_URL}IMG_0538.jpeg`;
                 } else if (!target.dataset.triedFallback2) {
                   target.dataset.triedFallback2 = 'true';
+                  target.src = `${import.meta.env.BASE_URL}assets/IMG_0538.jpeg`;
+                } else if (!target.dataset.triedFallback3) {
+                  target.dataset.triedFallback3 = 'true';
                   target.src = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop';
                 }
               }}
@@ -732,7 +735,7 @@ export default function App() {
           </div>
 
           {/* Backdrop Blur & Balanced Dark Overlay for High Visibility and Legibility */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/30 z-0 backdrop-blur-[1px] pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/85 via-neutral-950/50 to-black/35 z-0 backdrop-blur-[0.5px] pointer-events-none" />
           
           <div className="relative z-10 w-full h-full overflow-y-auto flex flex-col items-center justify-center px-6 py-12">
             <div className="max-w-4xl w-full flex flex-col items-center animate-fade-in">

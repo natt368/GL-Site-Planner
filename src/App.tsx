@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Project, Yard, Asset, BinAsset } from './types';
 import landingBg from './assets/IMG_0538.jpeg';
 import { DashboardView } from './components/DashboardView';
@@ -215,6 +215,87 @@ export default function App() {
   const [landingSearchQuery, setLandingSearchQuery] = useState<string>('');
   const [isLoadingLandingDrive, setIsLoadingLandingDrive] = useState(false);
   const [landingDriveError, setLandingDriveError] = useState<string | null>(null);
+
+  // Navigation history & URL hash synchronization for browser back/forward support
+  const getHashForNav = (isLanding: boolean, tab: string) => {
+    if (isLanding) return '#landing';
+    if (tab === 'planner') return '#planner';
+    if (tab === 'estimator') return '#estimator';
+    if (tab === 'binSpecs') return '#binSpecs';
+    return '#dashboard';
+  };
+
+  const getNavFromLocation = (): { showLanding: boolean; activeTab: 'dashboard' | 'planner' | 'estimator' | 'binSpecs' } => {
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    if (hash === 'dashboard') return { showLanding: false, activeTab: 'dashboard' };
+    if (hash === 'planner' || hash === 'site-planner') return { showLanding: false, activeTab: 'planner' };
+    if (hash === 'estimator' || hash === 'cable-estimator') return { showLanding: false, activeTab: 'estimator' };
+    if (hash === 'binspecs' || hash === 'bin-specs') return { showLanding: false, activeTab: 'binSpecs' };
+    if (hash === 'landing' || hash === 'home') return { showLanding: true, activeTab: 'dashboard' };
+
+    if (window.history.state && typeof window.history.state.showLanding === 'boolean') {
+      return {
+        showLanding: window.history.state.showLanding,
+        activeTab: window.history.state.activeTab || 'dashboard',
+      };
+    }
+
+    return { showLanding: true, activeTab: 'dashboard' };
+  };
+
+  const navigateTo = useCallback((nextShowLanding: boolean, nextTab?: 'dashboard' | 'planner' | 'estimator' | 'binSpecs') => {
+    setShowLanding(nextShowLanding);
+    const targetTab = nextTab || activeTab;
+    if (nextTab) {
+      setActiveTab(nextTab);
+    }
+
+    const hash = getHashForNav(nextShowLanding, targetTab);
+    const targetState = { showLanding: nextShowLanding, activeTab: targetTab };
+
+    const currentHash = window.location.hash;
+    const currentState = window.history.state;
+
+    if (
+      currentHash !== hash ||
+      !currentState ||
+      currentState.showLanding !== nextShowLanding ||
+      currentState.activeTab !== targetTab
+    ) {
+      window.history.pushState(targetState, '', hash);
+    }
+  }, [activeTab]);
+
+  // Synchronize browser history and handle browser Back / Forward (popstate)
+  useEffect(() => {
+    const initialNav = getNavFromLocation();
+    setShowLanding(initialNav.showLanding);
+    setActiveTab(initialNav.activeTab);
+
+    const initialHash = getHashForNav(initialNav.showLanding, initialNav.activeTab);
+    window.history.replaceState(
+      { showLanding: initialNav.showLanding, activeTab: initialNav.activeTab },
+      '',
+      initialHash
+    );
+
+    const handlePopState = (e: PopStateEvent) => {
+      let nav: { showLanding: boolean; activeTab: 'dashboard' | 'planner' | 'estimator' | 'binSpecs' };
+      if (e.state && typeof e.state.showLanding === 'boolean') {
+        nav = {
+          showLanding: e.state.showLanding,
+          activeTab: e.state.activeTab || 'dashboard',
+        };
+      } else {
+        nav = getNavFromLocation();
+      }
+      setShowLanding(nav.showLanding);
+      setActiveTab(nav.activeTab);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Auto-save states
   const [isAutoSaving, setIsAutoSaving] = useState(false);
@@ -459,7 +540,7 @@ export default function App() {
     try {
       const loaded = await loadProjectFromDrive(landingToken, fileId);
       setProject(loaded);
-      setShowLanding(false);
+      navigateTo(false, 'planner');
     } catch (err: any) {
       setLandingDriveError(err.message || 'Failed to load design');
       if (err.message?.includes('expired') || err.message?.includes('re-authorize') || err.message?.includes('401') || err.status === 401) {
@@ -574,7 +655,7 @@ export default function App() {
         }
 
         setProject(loadedProject);
-        setShowLanding(false);
+        navigateTo(false, 'planner');
       } catch (err) {
         alert('Failed to read the JSON file. Ensure it is a valid JSON file.');
       }
@@ -590,7 +671,7 @@ export default function App() {
       if (b) {
         updateProjectWithHistory((prev) => ({ ...prev, activeYardId: y.id }));
         setSelectedAssetId(assetId);
-        setActiveTab('planner');
+        navigateTo(false, 'planner');
         break;
       }
     }
@@ -665,7 +746,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setProject(DEFAULT_PROJECT);
-                      setShowLanding(false);
+                      navigateTo(false, 'planner');
                     }}
                     className="w-full py-3.5 bg-amber-400 hover:bg-amber-300 text-black font-black text-xs uppercase rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-amber-400/5"
                   >
@@ -676,7 +757,7 @@ export default function App() {
                   {hasSavedDraft && (
                     <button
                       onClick={() => {
-                        setShowLanding(false);
+                        navigateTo(false, 'planner');
                       }}
                       className="w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-800 font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer animate-pulse"
                     >
@@ -920,7 +1001,7 @@ export default function App() {
         {/* Navigation Tab selection */}
         <nav className="flex-1 px-4 py-6 space-y-1.5 font-semibold text-sm">
           <button
-            onClick={() => setShowLanding(true)}
+            onClick={() => navigateTo(true)}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-neutral-400 hover:bg-neutral-900/50 hover:text-white transition-all text-left cursor-pointer font-semibold"
           >
             <Home size={16} className="text-amber-400" />
@@ -928,7 +1009,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => navigateTo(false, 'dashboard')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left cursor-pointer ${
               activeTab === 'dashboard'
                 ? 'bg-neutral-900 text-white border-l-4 border-amber-400 font-black'
@@ -939,7 +1020,7 @@ export default function App() {
             Project Dashboard
           </button>
           <button
-            onClick={() => setActiveTab('planner')}
+            onClick={() => navigateTo(false, 'planner')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left cursor-pointer ${
               activeTab === 'planner'
                 ? 'bg-neutral-900 text-white border-l-4 border-amber-400 font-black'
@@ -950,7 +1031,7 @@ export default function App() {
             2D Site Planner
           </button>
           <button
-            onClick={() => setActiveTab('estimator')}
+            onClick={() => navigateTo(false, 'estimator')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left cursor-pointer ${
               activeTab === 'estimator'
                 ? 'bg-neutral-900 text-white border-l-4 border-amber-400 font-black'
@@ -961,7 +1042,7 @@ export default function App() {
             Cable Measuring
           </button>
           <button
-            onClick={() => setActiveTab('binSpecs')}
+            onClick={() => navigateTo(false, 'binSpecs')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left cursor-pointer ${
               activeTab === 'binSpecs'
                 ? 'bg-neutral-900 text-white border-l-4 border-amber-400 font-black'
@@ -1102,7 +1183,7 @@ export default function App() {
             project={project}
             onUpdateProject={updateProjectWithHistory}
             onSelectYard={(yardId) => updateProjectWithHistory((prev) => ({ ...prev, activeYardId: yardId }))}
-            onSwitchTab={setActiveTab}
+            onSwitchTab={(tab) => navigateTo(false, tab)}
             onLocateAsset={handleLocateAsset}
             lastSavedTime={lastAutoSaved}
             onSaveComplete={() => setLastAutoSaved(new Date())}
@@ -1113,7 +1194,7 @@ export default function App() {
           <SitePlannerView
             project={project}
             onUpdateProject={updateProjectWithHistory}
-            onSwitchTab={setActiveTab}
+            onSwitchTab={(tab) => navigateTo(false, tab)}
             onSelectBinInEstimator={handleSelectBinInEstimator}
             selectedAssetId={selectedAssetId}
             onSelectAsset={setSelectedAssetId}
@@ -1124,7 +1205,7 @@ export default function App() {
           <BinSpecsView
             project={project}
             onUpdateProject={updateProjectWithHistory}
-            onSwitchTab={setActiveTab}
+            onSwitchTab={(tab) => navigateTo(false, tab)}
             activeBinId={activeBinId}
           />
         )}
@@ -1133,7 +1214,7 @@ export default function App() {
           <CableEstimatorView
             project={project}
             onUpdateProject={updateProjectWithHistory}
-            onSwitchTab={setActiveTab}
+            onSwitchTab={(tab) => navigateTo(false, tab)}
             activeBinId={activeBinId}
           />
         )}

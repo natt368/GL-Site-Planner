@@ -4,8 +4,9 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
+  const repoName = process.env.GITHUB_REPOSITORY ? process.env.GITHUB_REPOSITORY.split('/')[1] : 'GL-Site-Planner';
   return {
-    base: process.env.GITHUB_ACTIONS ? '/GrainLink-Site-Planner/' : '/',
+    base: process.env.GITHUB_ACTIONS ? `/${repoName}/` : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

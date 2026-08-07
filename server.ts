@@ -11,10 +11,6 @@ async function startServer() {
   // Middleware for parsing JSON
   app.use(express.json());
 
-  // Serve static assets from assets and public directories
-  app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
-  app.use(express.static(path.resolve(process.cwd(), "public")));
-
   // API Routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });

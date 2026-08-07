@@ -699,7 +699,7 @@ export default function App() {
 
   const handleSelectBinInEstimator = (binId: number) => {
     setActiveBinId(binId);
-    setActiveTab('estimator');
+    navigateTo(false, 'estimator');
   };
 
   const triggerPDFExport = () => {

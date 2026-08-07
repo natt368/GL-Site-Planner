@@ -611,14 +611,9 @@ export default function App() {
       {showLanding ? (
         <div className="fixed inset-0 z-50 overflow-hidden text-zinc-100 flex flex-col items-center justify-center">
           {/* Locked Background Image Layer */}
-          <div 
-            className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-cover bg-center bg-no-repeat bg-neutral-950"
-            style={{
-              backgroundImage: `url("${landingBg}"), url("IMG_0538.jpeg"), url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop")`
-            }}
-          >
+          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-neutral-950">
             <img 
-              src={landingBg || 'IMG_0538.jpeg'} 
+              src={landingBg} 
               alt="GrainLink Landing Background"
               className="w-full h-full object-cover object-center brightness-90 scale-105 transition-transform duration-1000"
               referrerPolicy="no-referrer"
@@ -626,12 +621,9 @@ export default function App() {
                 const target = e.currentTarget;
                 if (!target.dataset.triedFallback1) {
                   target.dataset.triedFallback1 = 'true';
-                  target.src = 'IMG_0538.jpeg';
+                  target.src = `${import.meta.env.BASE_URL}IMG_0538.jpeg`;
                 } else if (!target.dataset.triedFallback2) {
                   target.dataset.triedFallback2 = 'true';
-                  target.src = 'assets/IMG_0538.jpeg';
-                } else if (!target.dataset.triedFallback3) {
-                  target.dataset.triedFallback3 = 'true';
                   target.src = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop';
                 }
               }}

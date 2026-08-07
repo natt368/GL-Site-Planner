@@ -5,7 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: './',
+    base: process.env.GITHUB_ACTIONS ? '/GrainLink-Site-Planner/' : './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

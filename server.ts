@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { exec } from "child_process";
 import { createServer as createViteServer } from "vite";
+import { generateBinDatabase } from "./scripts/parseExcel.js";
 
 async function startServer() {
   const app = express();
@@ -105,7 +106,6 @@ async function startServer() {
       if (updated) {
         XLSX.writeFile(wb, excelPath);
         // Regenerate JSON database
-        const { generateBinDatabase } = await import("./scripts/parseExcel.js");
         const binSpecs = generateBinDatabase();
         return res.json({ success: true, count: binSpecs.length, message: "Excel spreadsheet updated successfully" });
       } else {
@@ -122,7 +122,6 @@ async function startServer() {
     try {
       const excelPath = path.resolve(process.cwd(), "assets/Grain_Bin_Specifications.xlsx");
       if (fs.existsSync(excelPath)) {
-        const { generateBinDatabase } = await import("./scripts/parseExcel.js");
         const binSpecs = generateBinDatabase();
         if (binSpecs && binSpecs.length > 0) {
           return res.json({ success: true, count: binSpecs.length, data: binSpecs });

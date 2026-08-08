@@ -244,13 +244,19 @@ export const CableEstimatorView: React.FC<CableEstimatorViewProps> = ({
     const validLines = measurements
       .filter((l) => l.p1 && l.p2)
       .map((line) => {
-        const p1 = line.p1;
-        const p2 = line.p2!;
-        const midX = (p1.x + p2.x) / 2;
-        const distFromCenterX = Math.abs(midX - cx);
+       const p1 = line.p1;
+const p2 = line.p2!;
+const midX = (p1.x + p2.x) / 2;
+const distFromCenterX = Math.abs(midX - cx);
 
-        // Mount point height from ground
-        const mountHeightFt = (gy - p1.y) / pixelsPerFoot;
+// Use whichever endpoint is actually higher (smaller y) as the mount
+// point. Relying on p1 alone assumed the line was always drawn
+// top-to-bottom, which silently produced a wrong (often minimum 2')
+// recommendation whenever a line was drawn bottom-to-top instead.
+const topPoint = p1.y <= p2.y ? p1 : p2;
+
+// Mount point height from ground
+const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
         // Mount point height above aeration floor
         const mountHeightAboveFloor = mountHeightFt - F;
         // Target length to terminate 1' above cross auger

@@ -716,7 +716,7 @@ export default function App() {
             <img 
               src={landingBg} 
               alt="GrainLink Landing Background"
-              className="w-full h-full object-cover object-center brightness-95 contrast-105 scale-105 transition-transform duration-1000"
+              className="w-full h-full object-cover object-center brightness-100 contrast-100 scale-105 transition-transform duration-1000"
               referrerPolicy="no-referrer"
               onError={(e) => {
                 const target = e.currentTarget;
@@ -728,10 +728,10 @@ export default function App() {
                   target.src = `${import.meta.env.BASE_URL}assets/image-00538.jpeg`;
                 } else if (!target.dataset.triedFallback3) {
                   target.dataset.triedFallback3 = 'true';
-                  target.src = `${import.meta.env.BASE_URL}IMG_0538.jpeg`;
+                  target.src = `./image-00538.jpeg`;
                 } else if (!target.dataset.triedFallback4) {
                   target.dataset.triedFallback4 = 'true';
-                  target.src = `${import.meta.env.BASE_URL}assets/IMG_0538.jpeg`;
+                  target.src = `${import.meta.env.BASE_URL}IMG_0538.jpeg`;
                 } else if (!target.dataset.triedFallback5) {
                   target.dataset.triedFallback5 = 'true';
                   target.src = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop';
@@ -740,8 +740,8 @@ export default function App() {
             />
           </div>
 
-          {/* Backdrop Blur & Balanced Dark Overlay for High Visibility and Legibility */}
-          <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/85 via-neutral-950/50 to-black/35 z-0 backdrop-blur-[0.5px] pointer-events-none" />
+          {/* Gentle Overlay for Text Contrast without darkening the background image */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-black/20 z-0 pointer-events-none" />
           
           <div className="relative z-10 w-full h-full overflow-y-auto flex flex-col items-center justify-center px-6 py-12">
             <div className="max-w-4xl w-full flex flex-col items-center animate-fade-in">

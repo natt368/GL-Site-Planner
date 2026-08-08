@@ -6,7 +6,7 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   const repoName = process.env.GITHUB_REPOSITORY ? process.env.GITHUB_REPOSITORY.split('/')[1] : 'GL-Site-Planner';
   return {
-    base: './',
+    base: process.env.GITHUB_ACTIONS ? `/${repoName}/` : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Project, Yard, Asset, BinAsset, generateProjectId } from './types';
 import landingBg from './assets/landing-bg.jpg';
+import { LANDING_BG_DATA_URL } from './assets/landingBgData';
 const FALLBACK_BG = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop';
 import { DashboardView } from './components/DashboardView';
 import { SitePlannerView } from './components/SitePlannerView';
@@ -155,7 +156,7 @@ export default function App() {
   const [includeAssetDirectory, setIncludeAssetDirectory] = useState<boolean>(false);
 
   // Background image state with fallback handling
-  const [landingBgSrc, setLandingBgSrc] = useState<string>(landingBg);
+  const [landingBgSrc, setLandingBgSrc] = useState<string>(landingBg || LANDING_BG_DATA_URL);
 
   // Undo history stack state
   const [history, setHistory] = useState<Project[]>([]);
@@ -734,19 +735,15 @@ export default function App() {
           {/* Background Image Layer (z-0) */}
           <div 
             className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-black bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url("${landingBgSrc}")` }}
+            style={{ backgroundImage: `url("${landingBgSrc}"), url("${LANDING_BG_DATA_URL}")` }}
           >
             <img 
               src={landingBgSrc} 
               alt="GrainLink Landing Background"
               className="w-full h-full object-cover object-center scale-105 transition-transform duration-1000 block"
               onError={() => {
-                if (landingBgSrc === landingBg) {
-                  setLandingBgSrc('./image-00538.jpeg');
-                } else if (landingBgSrc === './image-00538.jpeg') {
-                  setLandingBgSrc('./assets/image-00538.jpeg');
-                } else if (landingBgSrc === './assets/image-00538.jpeg') {
-                  setLandingBgSrc('./IMG_0538.jpeg');
+                if (landingBgSrc !== LANDING_BG_DATA_URL) {
+                  setLandingBgSrc(LANDING_BG_DATA_URL);
                 } else if (landingBgSrc !== FALLBACK_BG) {
                   setLandingBgSrc(FALLBACK_BG);
                 }

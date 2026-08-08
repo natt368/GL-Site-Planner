@@ -1150,8 +1150,8 @@ export default function App() {
             <input
               type="text"
               value={project.id || ''}
-              onChange={(e) => updateProjectWithHistory((prev) => ({ ...prev, id: e.target.value }))}
-              className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-amber-400 font-mono font-bold focus:border-amber-400 outline-none transition-all"
+              readOnly
+              className="w-full bg-neutral-900/50 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-amber-400 font-mono font-bold outline-none transition-all cursor-not-allowed"
               placeholder="e.g. PRJ-102938"
             />
           </div>

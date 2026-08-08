@@ -712,12 +712,15 @@ export default function App() {
       {showLanding ? (
         <div className="fixed inset-0 z-50 overflow-hidden text-zinc-100 flex flex-col items-center justify-center">
           {/* Locked Background Image Layer */}
-          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-neutral-900">
+          <div 
+            className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-neutral-900 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${landingBg})` }}
+          >
             <img 
               src={landingBg} 
               alt="GrainLink Landing Background"
-              className="w-full h-full object-cover object-center brightness-100 contrast-100 scale-105 transition-transform duration-1000"
               referrerPolicy="no-referrer"
+              className="w-full h-full object-cover object-center scale-105 transition-transform duration-1000 block opacity-100"
               onError={(e) => {
                 const target = e.currentTarget;
                 if (!target.dataset.triedFallback1) {
@@ -728,12 +731,9 @@ export default function App() {
                   target.src = `${import.meta.env.BASE_URL}assets/image-00538.jpeg`;
                 } else if (!target.dataset.triedFallback3) {
                   target.dataset.triedFallback3 = 'true';
-                  target.src = `./image-00538.jpeg`;
+                  target.src = `${import.meta.env.BASE_URL}IMG_0538.jpeg`;
                 } else if (!target.dataset.triedFallback4) {
                   target.dataset.triedFallback4 = 'true';
-                  target.src = `${import.meta.env.BASE_URL}IMG_0538.jpeg`;
-                } else if (!target.dataset.triedFallback5) {
-                  target.dataset.triedFallback5 = 'true';
                   target.src = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop';
                 }
               }}
@@ -741,7 +741,7 @@ export default function App() {
           </div>
 
           {/* Gentle Overlay for Text Contrast without darkening the background image */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-black/20 z-0 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/25 to-black/10 z-0 pointer-events-none" />
           
           <div className="relative z-10 w-full h-full overflow-y-auto flex flex-col items-center justify-center px-6 py-12">
             <div className="max-w-4xl w-full flex flex-col items-center animate-fade-in">

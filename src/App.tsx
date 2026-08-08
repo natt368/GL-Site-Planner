@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Project, Yard, Asset, BinAsset } from './types';
-import landingBg from './assets/IMG_0538.jpeg';
+import landingBg from './assets/image-00538.jpeg';
 import { DashboardView } from './components/DashboardView';
 import { SitePlannerView } from './components/SitePlannerView';
 import { CableEstimatorView } from './components/CableEstimatorView';
@@ -722,12 +722,18 @@ export default function App() {
                 const target = e.currentTarget;
                 if (!target.dataset.triedFallback1) {
                   target.dataset.triedFallback1 = 'true';
-                  target.src = `${import.meta.env.BASE_URL}IMG_0538.jpeg`;
+                  target.src = `${import.meta.env.BASE_URL}image-00538.jpeg`;
                 } else if (!target.dataset.triedFallback2) {
                   target.dataset.triedFallback2 = 'true';
-                  target.src = `${import.meta.env.BASE_URL}assets/IMG_0538.jpeg`;
+                  target.src = `${import.meta.env.BASE_URL}assets/image-00538.jpeg`;
                 } else if (!target.dataset.triedFallback3) {
                   target.dataset.triedFallback3 = 'true';
+                  target.src = `${import.meta.env.BASE_URL}IMG_0538.jpeg`;
+                } else if (!target.dataset.triedFallback4) {
+                  target.dataset.triedFallback4 = 'true';
+                  target.src = `${import.meta.env.BASE_URL}assets/IMG_0538.jpeg`;
+                } else if (!target.dataset.triedFallback5) {
+                  target.dataset.triedFallback5 = 'true';
                   target.src = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop';
                 }
               }}

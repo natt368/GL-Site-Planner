@@ -4,7 +4,7 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Project, Yard, Asset, BinAsset } from '../types';
+import { Project, Yard, Asset, BinAsset, generateProjectId } from '../types';
 import { getCableRecommendation } from '../utils/pdfGenerator';
 import { Plus, Edit2, Trash2, FolderOpen, Save, MapPin, Cloud, LogOut, RefreshCw, AlertTriangle, Check, Download, FileText } from 'lucide-react';
 import {
@@ -119,7 +119,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setDriveError(null);
     setDriveSuccessMessage(null);
     try {
-      await saveProjectToDrive(accessToken, project);
+      const savedFileId = await saveProjectToDrive(accessToken, project);
+      if (savedFileId && project.driveFileId !== savedFileId) {
+        onUpdateProject((prev) => ({ ...prev, driveFileId: savedFileId }));
+      }
       setDriveSuccessMessage('Saved to Google Drive successfully!');
       onSaveComplete?.();
       setTimeout(() => setDriveSuccessMessage(null), 4000);
@@ -164,7 +167,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setDriveError(null);
     setDriveSuccessMessage(null);
     try {
-      await saveProjectToDrive(currentToken, project);
+      const savedFileId = await saveProjectToDrive(currentToken, project);
+      if (savedFileId && project.driveFileId !== savedFileId) {
+        onUpdateProject((prev) => ({ ...prev, driveFileId: savedFileId }));
+      }
       setDriveSuccessMessage('Saved to Google Drive successfully!');
       onSaveComplete?.();
       setTimeout(() => setDriveSuccessMessage(null), 4000);
@@ -191,6 +197,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setDriveError(null);
     try {
       const loaded = await loadProjectFromDrive(accessToken, fileId);
+      if (!loaded.id) {
+        loaded.id = generateProjectId();
+      }
+      loaded.driveFileId = fileId;
       onUpdateProject(() => loaded);
       setDriveSuccessMessage(`Successfully loaded design "${fileName}"!`);
       setTimeout(() => setDriveSuccessMessage(null), 4000);
@@ -336,6 +346,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         if (Array.isArray(imported)) {
           const mainYardId = Date.now();
           loadedProject = {
+            id: generateProjectId(),
             name: 'Imported Legacy Layout',
             customer: { name: 'Legacy Cust', phone: '-' },
             date: new Date().toLocaleDateString(),
@@ -345,6 +356,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         } else if (imported.bins && !imported.yards) {
           const mainYardId = Date.now();
           loadedProject = {
+            id: imported.id || generateProjectId(),
+            driveFileId: imported.driveFileId,
             name: imported.name || 'Imported Legacy Layout',
             customer: { name: imported.client || 'Legacy Cust', phone: '-' },
             date: new Date().toLocaleDateString(),
@@ -353,6 +366,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           };
         } else {
           loadedProject = {
+            id: imported.id || generateProjectId(),
+            driveFileId: imported.driveFileId,
             name: imported.name || 'Miller Site Layout',
             customer: imported.customer || { name: 'John Miller', phone: '555-0199' },
             date: imported.date || new Date().toLocaleDateString(),

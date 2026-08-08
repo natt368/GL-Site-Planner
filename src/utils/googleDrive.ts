@@ -133,20 +133,66 @@ export const getOrCreateFolder = async (accessToken: string): Promise<string> =>
 export const saveProjectToDrive = async (accessToken: string, project: Project): Promise<string> => {
   const folderId = await getOrCreateFolder(accessToken);
   const fileName = `${project.name}.json`;
-  
-  // Search for an existing file with the same name in this folder (including shared items and shared drives)
+
+  let fileId = project.driveFileId || '';
+
+  // 1. If project already has a driveFileId, update metadata (name) and media (contents) directly
+  if (fileId) {
+    try {
+      // Update file metadata (renames file in Google Drive if project.name changed)
+      const updateMetaUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true`;
+      const metaRes = await fetch(updateMetaUrl, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: fileName }),
+      });
+
+      if (metaRes.status === 401) {
+        throw new Error('Google session expired (1 hour limit). Please click "Connect" again to quickly re-authorize your session.');
+      }
+
+      if (metaRes.ok) {
+        // Update file content
+        const updateMediaUrl = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&supportsAllDrives=true`;
+        const mediaRes = await fetch(updateMediaUrl, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ...project, driveFileId: fileId }),
+        });
+
+        if (mediaRes.status === 401) {
+          throw new Error('Google session expired (1 hour limit). Please click "Connect" again to quickly re-authorize your session.');
+        }
+
+        if (mediaRes.ok) {
+          return fileId;
+        }
+      }
+    } catch (err: any) {
+      if (err.message?.includes('session expired')) throw err;
+      console.warn(`driveFileId ${fileId} update failed, falling back to search/create:`, err);
+      fileId = '';
+    }
+  }
+
+  // 2. If no driveFileId or update failed, search for an existing file with the same name in this folder
   const q = encodeURIComponent(`'${folderId}' in parents and name = '${fileName.replace(/'/g, "\\'")}' and mimeType = 'application/json' and trashed = false`);
   const searchUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`;
-  
+
   const searchRes = await fetch(searchUrl, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  
+
   if (searchRes.status === 401) {
     throw new Error('Google session expired (1 hour limit). Please click "Connect" again to quickly re-authorize your session.');
   }
-  
-  let fileId = '';
+
   let duplicateFileIds: string[] = [];
   if (searchRes.ok) {
     const searchData = await searchRes.json();
@@ -158,7 +204,7 @@ export const saveProjectToDrive = async (accessToken: string, project: Project):
     }
   }
 
-  // Delete any additional duplicate files with the same name to keep the Drive folder perfectly clean
+  // Delete any additional duplicate files with the same name
   if (duplicateFileIds.length > 0) {
     for (const dupId of duplicateFileIds) {
       try {
@@ -171,10 +217,8 @@ export const saveProjectToDrive = async (accessToken: string, project: Project):
       }
     }
   }
-  
+
   if (fileId) {
-    // Update existing file media (content) and optionally update name/metadata if needed
-    // Simple media update endpoint: PATCH https://www.googleapis.com/upload/drive/v3/files/fileId?uploadType=media
     const updateMediaUrl = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&supportsAllDrives=true`;
     const updateRes = await fetch(updateMediaUrl, {
       method: 'PATCH',
@@ -182,13 +226,13 @@ export const saveProjectToDrive = async (accessToken: string, project: Project):
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(project),
+      body: JSON.stringify({ ...project, driveFileId: fileId }),
     });
-    
+
     if (updateRes.status === 401) {
       throw new Error('Google session expired (1 hour limit). Please click "Connect" again to quickly re-authorize your session.');
     }
-    
+
     if (!updateRes.ok) {
       const errorBody = await updateRes.text();
       if (errorBody.includes('404')) {
@@ -196,7 +240,7 @@ export const saveProjectToDrive = async (accessToken: string, project: Project):
       }
       throw new Error(`Failed to update project file: ${updateRes.statusText} - ${errorBody}`);
     }
-    
+
     return fileId;
   } else {
     // Create new file metadata first with parent folder
@@ -213,27 +257,22 @@ export const saveProjectToDrive = async (accessToken: string, project: Project):
         parents: [folderId],
       }),
     });
-    
+
     if (createMetaRes.status === 401) {
       throw new Error('Google session expired (1 hour limit). Please click "Connect" again to quickly re-authorize your session.');
     }
-    
+
     if (!createMetaRes.ok) {
       const errorBody = await createMetaRes.text();
       if (errorBody.includes('404')) {
-        throw new Error(`Google Drive folder "${folderId}" was not found or is not writable by your Google Account. 
-
-To fix this:
-1. Open the Google Drive folder link in your browser.
-2. Ensure you are signed in with the same Google Account used in this app (${auth.currentUser?.email || 'your email'}).
-3. Check that your account has "Editor" permissions on this folder. If it is owned by another user, they must share it with you as an Editor.`);
+        throw new Error(`Google Drive folder "${folderId}" was not found or is not writable by your Google Account.`);
       }
       throw new Error(`Failed to create project file metadata: ${createMetaRes.statusText} - ${errorBody}`);
     }
-    
+
     const fileMeta = await createMetaRes.json();
     fileId = fileMeta.id;
-    
+
     // Upload content to the newly created file ID
     const uploadMediaUrl = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&supportsAllDrives=true`;
     const uploadRes = await fetch(uploadMediaUrl, {
@@ -242,18 +281,18 @@ To fix this:
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(project),
+      body: JSON.stringify({ ...project, driveFileId: fileId }),
     });
-    
+
     if (uploadRes.status === 401) {
       throw new Error('Google session expired (1 hour limit). Please click "Connect" again to quickly re-authorize your session.');
     }
-    
+
     if (!uploadRes.ok) {
       const errorBody = await uploadRes.text();
       throw new Error(`Failed to upload project contents: ${uploadRes.statusText} - ${errorBody}`);
     }
-    
+
     return fileId;
   }
 };

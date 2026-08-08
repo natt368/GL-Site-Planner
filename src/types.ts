@@ -102,10 +102,16 @@ export interface Customer {
 }
 
 export interface Project {
+  id: string;
+  driveFileId?: string;
   name: string;
   customer: Customer;
   date: string;
   activeYardId: number | null;
   yards: Yard[];
   notes?: string;
+}
+
+export function generateProjectId(): string {
+  return 'proj_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
 }

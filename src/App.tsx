@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Project, Yard, Asset, BinAsset } from './types';
+import { Project, Yard, Asset, BinAsset, generateProjectId } from './types';
 import landingBg from './assets/image-00538.jpeg';
 const FALLBACK_BG = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop';
 import { DashboardView } from './components/DashboardView';
@@ -23,6 +23,7 @@ import {
   saveProjectToDrive,
 } from './utils/googleDrive';
 const DEFAULT_PROJECT: Project = {
+  id: 'proj_default_site_plan',
   name: 'New Site Project',
   customer: {
     name: '',
@@ -136,13 +137,16 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object' && Array.isArray(parsed.yards) && typeof parsed.name === 'string') {
+          if (!parsed.id) {
+            parsed.id = generateProjectId();
+          }
           return parsed;
         }
       }
     } catch (e) {
       console.error('Failed to parse saved project state from localStorage:', e);
     }
-    return DEFAULT_PROJECT;
+    return { ...DEFAULT_PROJECT, id: generateProjectId() };
   });
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'planner' | 'estimator' | 'binSpecs'>('dashboard');
@@ -442,7 +446,10 @@ export default function App() {
       setIsAutoSaving(true);
       setAutoSaveError(null);
       try {
-        await saveProjectToDrive(landingToken, projectRef.current);
+        const savedFileId = await saveProjectToDrive(landingToken, projectRef.current);
+        if (savedFileId && projectRef.current.driveFileId !== savedFileId) {
+          updateProjectWithHistory((prev) => ({ ...prev, driveFileId: savedFileId }));
+        }
         setLastAutoSaved(new Date());
       } catch (err: any) {
         console.error('Auto-save to Google Drive failed:', err);
@@ -560,6 +567,10 @@ export default function App() {
     setLandingDriveError(null);
     try {
       const loaded = await loadProjectFromDrive(landingToken, fileId);
+      if (!loaded.id) {
+        loaded.id = generateProjectId();
+      }
+      loaded.driveFileId = fileId;
       setProject(loaded);
       navigateTo(false, 'planner');
     } catch (err: any) {
@@ -587,6 +598,7 @@ export default function App() {
         if (Array.isArray(imported)) {
           const mainYardId = Date.now();
           loadedProject = {
+            id: generateProjectId(),
             name: 'Imported Legacy Layout',
             customer: { name: 'Legacy Cust', phone: '-' },
             date: new Date().toLocaleDateString(),
@@ -596,6 +608,8 @@ export default function App() {
         } else if (imported && typeof imported === 'object' && imported.bins && !imported.yards) {
           const mainYardId = Date.now();
           loadedProject = {
+            id: imported.id || generateProjectId(),
+            driveFileId: imported.driveFileId,
             name: imported.name || 'Imported Legacy Layout',
             customer: { name: imported.client || 'Legacy Cust', phone: '-' },
             date: new Date().toLocaleDateString(),
@@ -604,6 +618,8 @@ export default function App() {
           };
         } else if (imported && typeof imported === 'object' && Array.isArray(imported.yards)) {
           loadedProject = {
+            id: imported.id || generateProjectId(),
+            driveFileId: imported.driveFileId,
             name: imported.name || 'Miller Site Layout',
             customer: imported.customer || { name: 'John Miller', phone: '555-0199' },
             date: imported.date || new Date().toLocaleDateString(),
@@ -763,7 +779,11 @@ export default function App() {
                 <div className="space-y-3 mt-8">
                   <button
                     onClick={() => {
-                      setProject(DEFAULT_PROJECT);
+                      setProject({
+                        ...DEFAULT_PROJECT,
+                        id: generateProjectId(),
+                        driveFileId: undefined,
+                      });
                       navigateTo(false, 'planner');
                     }}
                     className="w-full py-3.5 bg-amber-400 hover:bg-amber-300 text-black font-black text-xs uppercase rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-amber-400/5"

@@ -729,16 +729,39 @@ export default function App() {
       {showLanding ? (
         <div className="fixed inset-0 z-50 overflow-hidden text-zinc-100 flex flex-col items-center justify-center bg-black">
           {/* Locked Background Image Layer (z-0) */}
-          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-black">
+          <div 
+            className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-black bg-cover bg-center bg-no-repeat"
+            style={{ 
+              backgroundImage: `url("${landingBg}"), url("${import.meta.env.BASE_URL}image-00538.jpeg"), url("${FALLBACK_BG}")` 
+            }}
+          >
             <img 
               src={landingBg} 
               alt="GrainLink Landing Background"
               referrerPolicy="no-referrer"
-              className="absolute inset-0 w-full h-full object-cover object-center scale-105 transition-transform duration-1000 block opacity-100 pointer-events-none"
+              className="absolute inset-0 w-full h-full object-cover object-center scale-105 transition-transform duration-1000 block opacity-100 pointer-events-none z-0"
               onError={(e) => {
                 const target = e.currentTarget;
-                if (target.src !== FALLBACK_BG) {
-                  target.src = FALLBACK_BG;
+                const parent = target.parentElement;
+                let fallback = '';
+                if (!target.dataset.tried1) {
+                  target.dataset.tried1 = 'true';
+                  fallback = `${import.meta.env.BASE_URL}image-00538.jpeg`;
+                } else if (!target.dataset.tried2) {
+                  target.dataset.tried2 = 'true';
+                  fallback = `${import.meta.env.BASE_URL}assets/image-00538.jpeg`;
+                } else if (!target.dataset.tried3) {
+                  target.dataset.tried3 = 'true';
+                  fallback = `${import.meta.env.BASE_URL}IMG_0538.jpeg`;
+                } else if (!target.dataset.tried4) {
+                  target.dataset.tried4 = 'true';
+                  fallback = FALLBACK_BG;
+                }
+                if (fallback) {
+                  target.src = fallback;
+                  if (parent) {
+                    parent.style.backgroundImage = `url("${fallback}")`;
+                  }
                 }
               }}
             />

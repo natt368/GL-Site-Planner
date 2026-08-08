@@ -711,12 +711,9 @@ export default function App() {
     <div className="flex h-screen w-full select-none overflow-hidden bg-black text-zinc-100 font-sans">
       {/* Immersive Landing Page View */}
       {showLanding ? (
-        <div className="fixed inset-0 z-50 overflow-hidden text-zinc-100 flex flex-col items-center justify-center">
-          {/* Locked Background Image Layer */}
-          <div 
-            className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url("${landingBg}"), url("${FALLBACK_BG}")` }}
-          >
+        <div className="fixed inset-0 z-50 overflow-hidden text-zinc-100 flex flex-col items-center justify-center bg-black">
+          {/* Locked Background Image Layer (z-0) */}
+          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-black">
             <img 
               src={landingBg} 
               alt="GrainLink Landing Background"
@@ -731,10 +728,11 @@ export default function App() {
             />
           </div>
 
-          {/* Gentle Overlay for Text Contrast without darkening the background image */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/25 to-black/10 z-0 pointer-events-none" />
+          {/* Gentle Overlay for Text Contrast (z-10) */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-black/10 z-10 pointer-events-none" />
           
-          <div className="relative z-10 w-full h-full overflow-y-auto flex flex-col items-center justify-center px-6 py-12">
+          {/* Main Content Area (z-20) */}
+          <div className="relative z-20 w-full h-full overflow-y-auto flex flex-col items-center justify-center px-6 py-12">
             <div className="max-w-4xl w-full flex flex-col items-center animate-fade-in">
             
             {/* Logo / Brand Accent */}

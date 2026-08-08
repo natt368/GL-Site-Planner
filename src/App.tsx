@@ -154,6 +154,9 @@ export default function App() {
   const [activeBinId, setActiveBinId] = useState<number | null>(null);
   const [includeAssetDirectory, setIncludeAssetDirectory] = useState<boolean>(false);
 
+  // Background image state with fallback handling
+  const [landingBgSrc, setLandingBgSrc] = useState<string>(landingBg);
+
   // Undo history stack state
   const [history, setHistory] = useState<Project[]>([]);
 
@@ -728,47 +731,30 @@ export default function App() {
       {/* Immersive Landing Page View */}
       {showLanding ? (
         <div className="fixed inset-0 z-50 overflow-hidden text-zinc-100 flex flex-col items-center justify-center bg-black">
-          {/* Locked Background Image Layer (z-0) */}
-          <div 
-            className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-black bg-cover bg-center bg-no-repeat"
-            style={{ 
-              backgroundImage: `url("${landingBg}"), url("${import.meta.env.BASE_URL}image-00538.jpeg"), url("${FALLBACK_BG}")` 
-            }}
-          >
+          {/* Background Image Layer (z-0) */}
+          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none">
             <img 
-              src={landingBg} 
+              src={landingBgSrc} 
               alt="GrainLink Landing Background"
               referrerPolicy="no-referrer"
-              className="absolute inset-0 w-full h-full object-cover object-center scale-105 transition-transform duration-1000 block opacity-100 pointer-events-none z-0"
-              onError={(e) => {
-                const target = e.currentTarget;
-                const parent = target.parentElement;
-                let fallback = '';
-                if (!target.dataset.tried1) {
-                  target.dataset.tried1 = 'true';
-                  fallback = `${import.meta.env.BASE_URL}image-00538.jpeg`;
-                } else if (!target.dataset.tried2) {
-                  target.dataset.tried2 = 'true';
-                  fallback = `${import.meta.env.BASE_URL}assets/image-00538.jpeg`;
-                } else if (!target.dataset.tried3) {
-                  target.dataset.tried3 = 'true';
-                  fallback = `${import.meta.env.BASE_URL}IMG_0538.jpeg`;
-                } else if (!target.dataset.tried4) {
-                  target.dataset.tried4 = 'true';
-                  fallback = FALLBACK_BG;
-                }
-                if (fallback) {
-                  target.src = fallback;
-                  if (parent) {
-                    parent.style.backgroundImage = `url("${fallback}")`;
-                  }
+              className="w-full h-full object-cover object-center scale-105 transition-transform duration-1000 block"
+              onError={() => {
+                const baseUrl = import.meta.env.BASE_URL || '/';
+                if (landingBgSrc === landingBg) {
+                  setLandingBgSrc(`${baseUrl}image-00538.jpeg`);
+                } else if (landingBgSrc === `${baseUrl}image-00538.jpeg`) {
+                  setLandingBgSrc(`${baseUrl}assets/image-00538.jpeg`);
+                } else if (landingBgSrc === `${baseUrl}assets/image-00538.jpeg`) {
+                  setLandingBgSrc(`${baseUrl}IMG_0538.jpeg`);
+                } else if (landingBgSrc !== FALLBACK_BG) {
+                  setLandingBgSrc(FALLBACK_BG);
                 }
               }}
             />
           </div>
 
-          {/* Gentle Overlay for Text Contrast (z-10) */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-black/10 z-10 pointer-events-none" />
+          {/* Gentle Gradient Overlay for Readability (z-10) */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/40 to-black/20 z-10 pointer-events-none" />
           
           {/* Main Content Area (z-20) */}
           <div className="relative z-20 w-full h-full overflow-y-auto flex flex-col items-center justify-center px-6 py-12">

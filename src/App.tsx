@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Project, Yard, Asset, BinAsset, generateProjectId } from './types';
-import landingBg from './assets/image-00538.jpeg';
+import landingBg from './assets/landing-bg.jpg';
 const FALLBACK_BG = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop';
 import { DashboardView } from './components/DashboardView';
 import { SitePlannerView } from './components/SitePlannerView';

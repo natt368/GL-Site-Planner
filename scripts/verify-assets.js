@@ -16,13 +16,35 @@ const publicAssetsDir = path.join(publicDir, 'assets');
   }
 });
 
-// Find best valid source image
-let sourceImagePath = path.join(srcAssetsDir, 'landing-bg.jpg');
+function isValidJpeg(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return false;
+    const stat = fs.statSync(filePath);
+    if (stat.size < 1000) return false;
+    const fd = fs.openSync(filePath, 'r');
+    const buffer = Buffer.alloc(4);
+    fs.readSync(fd, buffer, 0, 4, 0);
+    fs.closeSync(fd);
+    return buffer[0] === 0xff && buffer[1] === 0xd8;
+  } catch {
+    return false;
+  }
+}
 
-if (!fs.existsSync(sourceImagePath) || fs.statSync(sourceImagePath).size < 1000) {
-  const candidateDirFiles = fs.readdirSync(imagesDir).filter((f) => f.endsWith('.jpg') || f.endsWith('.jpeg'));
-  if (candidateDirFiles.length > 0) {
-    sourceImagePath = path.join(imagesDir, candidateDirFiles[0]);
+// Find best valid source image
+let sourceImagePath = '';
+
+const candidatePaths = [
+  path.join(imagesDir, 'landing_bg_1786209308507.jpg'),
+  ...fs.readdirSync(imagesDir).map((f) => path.join(imagesDir, f)),
+  path.join(srcAssetsDir, 'landing-bg.jpg'),
+  path.join(publicDir, 'landing-bg.jpg'),
+];
+
+for (const p of candidatePaths) {
+  if (isValidJpeg(p)) {
+    sourceImagePath = p;
+    break;
   }
 }
 

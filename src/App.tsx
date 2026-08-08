@@ -733,10 +733,7 @@ export default function App() {
       {showLanding ? (
         <div className="fixed inset-0 z-50 overflow-hidden text-zinc-100 flex flex-col items-center justify-center bg-black">
           {/* Background Image Layer (z-0) */}
-          <div 
-            className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-black bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url("${landingBgSrc}"), url("${LANDING_BG_DATA_URL}")` }}
-          >
+          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-black">
             <img 
               src={landingBgSrc} 
               alt="GrainLink Landing Background"

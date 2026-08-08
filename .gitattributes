@@ -1,7 +1,7 @@
-* text=auto
-*.jpeg binary
+# Treat all image files as binary to prevent git merge corruptions
 *.jpg binary
+*.jpeg binary
 *.png binary
 *.gif binary
+*.webp binary
 *.ico binary
-*.xlsx binary

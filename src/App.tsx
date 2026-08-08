@@ -713,28 +713,36 @@ export default function App() {
         <div className="fixed inset-0 z-50 overflow-hidden text-zinc-100 flex flex-col items-center justify-center">
           {/* Locked Background Image Layer */}
           <div 
-            className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-neutral-900 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${landingBg})` }}
+            className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url("${landingBg}")` }}
           >
             <img 
               src={landingBg} 
               alt="GrainLink Landing Background"
               referrerPolicy="no-referrer"
-              className="w-full h-full object-cover object-center scale-105 transition-transform duration-1000 block opacity-100"
+              className="absolute inset-0 w-full h-full object-cover object-center scale-105 transition-transform duration-1000 block opacity-100 pointer-events-none"
               onError={(e) => {
                 const target = e.currentTarget;
+                const parent = target.parentElement;
+                let fallback = '';
                 if (!target.dataset.triedFallback1) {
                   target.dataset.triedFallback1 = 'true';
-                  target.src = `${import.meta.env.BASE_URL}image-00538.jpeg`;
+                  fallback = `${import.meta.env.BASE_URL}image-00538.jpeg`;
                 } else if (!target.dataset.triedFallback2) {
                   target.dataset.triedFallback2 = 'true';
-                  target.src = `${import.meta.env.BASE_URL}assets/image-00538.jpeg`;
+                  fallback = `${import.meta.env.BASE_URL}assets/image-00538.jpeg`;
                 } else if (!target.dataset.triedFallback3) {
                   target.dataset.triedFallback3 = 'true';
-                  target.src = `${import.meta.env.BASE_URL}IMG_0538.jpeg`;
+                  fallback = `${import.meta.env.BASE_URL}IMG_0538.jpeg`;
                 } else if (!target.dataset.triedFallback4) {
                   target.dataset.triedFallback4 = 'true';
-                  target.src = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop';
+                  fallback = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop';
+                }
+                if (fallback) {
+                  target.src = fallback;
+                  if (parent) {
+                    parent.style.backgroundImage = `url("${fallback}")`;
+                  }
                 }
               }}
             />

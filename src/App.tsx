@@ -732,20 +732,21 @@ export default function App() {
       {showLanding ? (
         <div className="fixed inset-0 z-50 overflow-hidden text-zinc-100 flex flex-col items-center justify-center bg-black">
           {/* Background Image Layer (z-0) */}
-          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none">
+          <div 
+            className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-black bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url("${landingBgSrc}")` }}
+          >
             <img 
               src={landingBgSrc} 
               alt="GrainLink Landing Background"
-              referrerPolicy="no-referrer"
               className="w-full h-full object-cover object-center scale-105 transition-transform duration-1000 block"
               onError={() => {
-                const baseUrl = import.meta.env.BASE_URL || '/';
                 if (landingBgSrc === landingBg) {
-                  setLandingBgSrc(`${baseUrl}image-00538.jpeg`);
-                } else if (landingBgSrc === `${baseUrl}image-00538.jpeg`) {
-                  setLandingBgSrc(`${baseUrl}assets/image-00538.jpeg`);
-                } else if (landingBgSrc === `${baseUrl}assets/image-00538.jpeg`) {
-                  setLandingBgSrc(`${baseUrl}IMG_0538.jpeg`);
+                  setLandingBgSrc('./image-00538.jpeg');
+                } else if (landingBgSrc === './image-00538.jpeg') {
+                  setLandingBgSrc('./assets/image-00538.jpeg');
+                } else if (landingBgSrc === './assets/image-00538.jpeg') {
+                  setLandingBgSrc('./IMG_0538.jpeg');
                 } else if (landingBgSrc !== FALLBACK_BG) {
                   setLandingBgSrc(FALLBACK_BG);
                 }

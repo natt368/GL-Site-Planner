@@ -6,7 +6,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Project, Yard, Asset, BinAsset, generateProjectId } from '../types';
 import { getCableRecommendation } from '../utils/pdfGenerator';
-import { Plus, Edit2, Trash2, FolderOpen, Save, MapPin, Cloud, LogOut, RefreshCw, AlertTriangle, Check, Download, FileText } from 'lucide-react';
+import { Plus, Edit2, Trash2, FolderOpen, Save, MapPin, Cloud, LogOut, RefreshCw, AlertTriangle, Check, Download, FileText, Copy } from 'lucide-react';
 import {
   initAuth,
   googleSignIn,
@@ -45,6 +45,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [isSavingDrive, setIsSavingDrive] = useState(false);
   const [driveSuccessMessage, setDriveSuccessMessage] = useState<string | null>(null);
   const [driveError, setDriveError] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState(false);
+
+  const handleCopyProjectId = () => {
+    if (!project.id) return;
+    navigator.clipboard.writeText(project.id);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
+  };
 
   useEffect(() => {
     const unsubscribe = initAuth(
@@ -448,10 +456,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div id="view-dashboard" className="flex-1 flex flex-col md:flex-row p-4 md:p-8 overflow-hidden gap-6 md:gap-8 h-full custom-scrollbar">
       {/* Left Side: Dashboard Stats and Inventory */}
       <div className="flex-[2] flex flex-col space-y-6 h-full overflow-hidden pr-2">
-        <div>
-          <h2 id="dashboard-project-name" className="text-2xl md:text-3xl font-black text-neutral-900 tracking-tight uppercase">
-            {project.name}
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 id="dashboard-project-name" className="text-2xl md:text-3xl font-black text-neutral-900 tracking-tight uppercase">
+              {project.name}
+            </h2>
+            <div className="flex items-center gap-2 px-3 py-1 bg-neutral-950 text-amber-400 border border-neutral-800 rounded-xl text-xs font-mono font-bold shadow-sm">
+              <span className="text-[10px] text-neutral-500 font-sans uppercase font-bold tracking-wider">Project ID:</span>
+              <span className="tracking-wide">{project.id || 'N/A'}</span>
+              <button
+                onClick={handleCopyProjectId}
+                className="p-1 text-neutral-400 hover:text-white transition-colors cursor-pointer rounded bg-neutral-900 border border-neutral-800 ml-1"
+                title="Copy Unique Project ID"
+              >
+                {copiedId ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Stats Grid */}

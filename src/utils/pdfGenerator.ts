@@ -419,34 +419,39 @@ export async function generateUnifiedPDF(
     doc.setTextColor(50, 50, 50);
 
     doc.setFont('Helvetica', 'normal');
-    doc.text('Project Name:', 50, dossierY);
+    doc.text('Project ID:', 50, dossierY);
     doc.setFont('Helvetica', 'bold');
-    doc.text(title.toUpperCase(), 130, dossierY);
+    doc.text((project.id || 'N/A').toUpperCase(), 130, dossierY);
 
     doc.setFont('Helvetica', 'normal');
-    doc.text('Customer Name:', 50, dossierY + 16);
+    doc.text('Project Name:', 50, dossierY + 16);
     doc.setFont('Helvetica', 'bold');
-    doc.text(customerName, 130, dossierY + 16);
+    doc.text(title.toUpperCase(), 130, dossierY + 16);
 
     doc.setFont('Helvetica', 'normal');
-    doc.text('Contact Phone:', 50, dossierY + 32);
+    doc.text('Customer Name:', 50, dossierY + 32);
     doc.setFont('Helvetica', 'bold');
-    doc.text(customerPhone, 130, dossierY + 32);
+    doc.text(customerName, 130, dossierY + 32);
 
     doc.setFont('Helvetica', 'normal');
-    doc.text('Contact Email:', 50, dossierY + 48);
+    doc.text('Contact Phone:', 50, dossierY + 48);
     doc.setFont('Helvetica', 'bold');
-    doc.text(customerEmail, 130, dossierY + 48);
+    doc.text(customerPhone, 130, dossierY + 48);
 
     doc.setFont('Helvetica', 'normal');
-    doc.text('Yard Location:', 50, dossierY + 64);
+    doc.text('Contact Email:', 50, dossierY + 64);
     doc.setFont('Helvetica', 'bold');
-    doc.text(customerLocation, 130, dossierY + 64);
+    doc.text(customerEmail, 130, dossierY + 64);
 
     doc.setFont('Helvetica', 'normal');
-    doc.text('Generated Date:', 50, dossierY + 80);
+    doc.text('Yard Location:', 50, dossierY + 80);
     doc.setFont('Helvetica', 'bold');
-    doc.text(date, 130, dossierY + 80);
+    doc.text(customerLocation, 130, dossierY + 80);
+
+    doc.setFont('Helvetica', 'normal');
+    doc.text('Generated Date:', 50, dossierY + 96);
+    doc.setFont('Helvetica', 'bold');
+    doc.text(date, 130, dossierY + 96);
 
     // Left Column: Statistics Block
     doc.setFontSize(8);

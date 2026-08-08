@@ -13,7 +13,7 @@ import { SitePlannerView } from './components/SitePlannerView';
 import { CableEstimatorView } from './components/CableEstimatorView';
 import { BinSpecsView } from './components/BinSpecsView';
 import { generateUnifiedPDF } from './utils/pdfGenerator';
-import { LayoutDashboard, Map as MapIcon, Download, Loader2, Plus, FolderOpen, Cloud, RefreshCw, AlertTriangle, Play, ChevronRight, FileCode, LogOut, Search, X, Github, GitBranch, Home, FileText, Compass } from 'lucide-react';
+import { LayoutDashboard, Map as MapIcon, Download, Loader2, Plus, FolderOpen, Cloud, RefreshCw, AlertTriangle, Play, ChevronRight, FileCode, LogOut, Search, X, Github, GitBranch, Home, FileText, Compass, Copy, Check } from 'lucide-react';
 import {
   initAuth,
   googleSignIn,
@@ -154,6 +154,14 @@ export default function App() {
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const [activeBinId, setActiveBinId] = useState<number | null>(null);
   const [includeAssetDirectory, setIncludeAssetDirectory] = useState<boolean>(false);
+  const [copiedId, setCopiedId] = useState<boolean>(false);
+
+  const handleCopyProjectId = () => {
+    if (!project.id) return;
+    navigator.clipboard.writeText(project.id);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
+  };
 
   // Background image state with fallback handling
   const [landingBgSrc, setLandingBgSrc] = useState<string>(landingBg || LANDING_BG_DATA_URL);
@@ -1118,6 +1126,37 @@ export default function App() {
         {/* Customer & Project Metadata Inputs */}
         <div className="p-6 border-t border-neutral-900 bg-neutral-950/40 space-y-4">
           <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-[9px] font-black uppercase text-neutral-500 tracking-wider">
+                Unique Project ID
+              </label>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleCopyProjectId}
+                  className="p-1 text-neutral-400 hover:text-amber-400 transition-colors cursor-pointer"
+                  title="Copy Unique Project ID"
+                >
+                  {copiedId ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                </button>
+                <button
+                  onClick={() => updateProjectWithHistory((prev) => ({ ...prev, id: generateProjectId() }))}
+                  className="p-1 text-neutral-400 hover:text-amber-400 transition-colors cursor-pointer"
+                  title="Generate New Unique ID"
+                >
+                  <RefreshCw size={12} />
+                </button>
+              </div>
+            </div>
+            <input
+              type="text"
+              value={project.id || ''}
+              onChange={(e) => updateProjectWithHistory((prev) => ({ ...prev, id: e.target.value }))}
+              className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-amber-400 font-mono font-bold focus:border-amber-400 outline-none transition-all"
+              placeholder="e.g. PRJ-102938"
+            />
+          </div>
+
+          <div>
             <label className="block text-[9px] font-black uppercase text-neutral-500 tracking-wider mb-1">
               Project Name
             </label>
@@ -1220,6 +1259,34 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 h-screen relative flex flex-col bg-neutral-100 overflow-hidden">
+        {/* Top Header Bar for Project ID and View Context */}
+        <header className="h-11 bg-neutral-950 border-b border-neutral-900 px-6 flex items-center justify-between shrink-0 text-xs select-none z-10">
+          <div className="flex items-center gap-3">
+            <span className="font-extrabold uppercase tracking-widest text-neutral-400 text-[11px]">
+              {activeTab === 'dashboard' && 'Dashboard Overview'}
+              {activeTab === 'planner' && '2D Site Planner'}
+              {activeTab === 'estimator' && 'Cable Estimator'}
+              {activeTab === 'binSpecs' && 'Bin Specs Library'}
+            </span>
+            <span className="text-neutral-800">•</span>
+            <span className="font-black text-white uppercase tracking-tight text-xs">{project.name}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-2.5 py-1 bg-neutral-900 border border-neutral-850 rounded-lg text-amber-400 font-mono text-xs font-bold shadow-sm">
+              <span className="text-[9px] text-neutral-500 font-sans uppercase font-bold tracking-wider">Project ID:</span>
+              <span className="tracking-wide">{project.id || 'PRJ-N/A'}</span>
+              <button
+                onClick={handleCopyProjectId}
+                className="p-0.5 text-neutral-400 hover:text-white transition-colors cursor-pointer ml-0.5 rounded hover:bg-neutral-800"
+                title="Copy Unique Project ID"
+              >
+                {copiedId ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+              </button>
+            </div>
+          </div>
+        </header>
+
         {activeTab === 'dashboard' && (
           <DashboardView
             project={project}

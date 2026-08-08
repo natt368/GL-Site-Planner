@@ -113,5 +113,6 @@ export interface Project {
 }
 
 export function generateProjectId(): string {
-  return 'proj_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+  const num = Math.floor(100000 + Math.random() * 900000);
+  return `PRJ-${num}`;
 }

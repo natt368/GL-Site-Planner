@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Project, Yard, Asset, BinAsset } from './types';
 import landingBg from './assets/image-00538.jpeg';
+const FALLBACK_BG = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop';
 import { DashboardView } from './components/DashboardView';
 import { SitePlannerView } from './components/SitePlannerView';
 import { CableEstimatorView } from './components/CableEstimatorView';
@@ -714,7 +715,7 @@ export default function App() {
           {/* Locked Background Image Layer */}
           <div 
             className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url("${landingBg}")` }}
+            style={{ backgroundImage: `url("${landingBg}"), url("${FALLBACK_BG}")` }}
           >
             <img 
               src={landingBg} 
@@ -723,26 +724,8 @@ export default function App() {
               className="absolute inset-0 w-full h-full object-cover object-center scale-105 transition-transform duration-1000 block opacity-100 pointer-events-none"
               onError={(e) => {
                 const target = e.currentTarget;
-                const parent = target.parentElement;
-                let fallback = '';
-                if (!target.dataset.triedFallback1) {
-                  target.dataset.triedFallback1 = 'true';
-                  fallback = `${import.meta.env.BASE_URL}image-00538.jpeg`;
-                } else if (!target.dataset.triedFallback2) {
-                  target.dataset.triedFallback2 = 'true';
-                  fallback = `${import.meta.env.BASE_URL}assets/image-00538.jpeg`;
-                } else if (!target.dataset.triedFallback3) {
-                  target.dataset.triedFallback3 = 'true';
-                  fallback = `${import.meta.env.BASE_URL}IMG_0538.jpeg`;
-                } else if (!target.dataset.triedFallback4) {
-                  target.dataset.triedFallback4 = 'true';
-                  fallback = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop';
-                }
-                if (fallback) {
-                  target.src = fallback;
-                  if (parent) {
-                    parent.style.backgroundImage = `url("${fallback}")`;
-                  }
+                if (target.src !== FALLBACK_BG) {
+                  target.src = FALLBACK_BG;
                 }
               }}
             />

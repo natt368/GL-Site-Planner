@@ -5,11 +5,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Project, Yard, Asset, BinAsset, generateProjectId } from './types';
-import landingBg from './assets/landing-bg.jpg';
-import { LANDING_BG_DATA_URL } from './assets/landingBgData';
-const FALLBACK_BG = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop';
 import { DashboardView } from './components/DashboardView';
 import { SitePlannerView } from './components/SitePlannerView';
+import { LandingBackground } from './components/LandingBackground';
 import { CableEstimatorView } from './components/CableEstimatorView';
 import { BinSpecsView } from './components/BinSpecsView';
 import { generateUnifiedPDF } from './utils/pdfGenerator';
@@ -162,9 +160,6 @@ export default function App() {
     setCopiedId(true);
     setTimeout(() => setCopiedId(false), 2000);
   };
-
-  // Background image state with fallback handling
-  const [landingBgSrc, setLandingBgSrc] = useState<string>(landingBg || LANDING_BG_DATA_URL);
 
   // Undo history stack state
   const [history, setHistory] = useState<Project[]>([]);
@@ -739,25 +734,14 @@ export default function App() {
     <div className="flex h-screen w-full select-none overflow-hidden bg-ink text-ink font-sans">
       {/* Immersive Landing Page View */}
       {showLanding ? (
-        <div className="fixed inset-0 z-50 overflow-hidden text-ink flex flex-col items-center justify-center bg-ink">
-          {/* Background Image Layer (z-0) */}
-          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-ink">
-            <img 
-              src={landingBgSrc} 
-              alt="GrainLink Landing Background"
-              className="w-full h-full object-cover object-center scale-105 transition-transform duration-1000 block"
-              onError={() => {
-                if (landingBgSrc !== LANDING_BG_DATA_URL) {
-                  setLandingBgSrc(LANDING_BG_DATA_URL);
-                } else if (landingBgSrc !== FALLBACK_BG) {
-                  setLandingBgSrc(FALLBACK_BG);
-                }
-              }}
-            />
+        <div className="fixed inset-0 z-50 overflow-hidden text-ink flex flex-col items-center justify-center bg-paper">
+          {/* Background Illustration Layer (z-0) */}
+          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none">
+            <LandingBackground />
           </div>
 
-          {/* Gentle Gradient Overlay for Readability (z-10) */}
-          <div className="absolute inset-0 bg-gradient-to-t from-ink/50 via-ink/25 to-ink/10 z-10 pointer-events-none" />
+          {/* Soft Readability Vignette (z-10) */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(247,246,242,0.75)_0%,rgba(247,246,242,0.2)_55%,rgba(247,246,242,0)_80%)] z-10 pointer-events-none" />
           
           {/* Main Content Area (z-20) */}
           <div className="relative z-20 w-full h-full overflow-y-auto flex flex-col items-center justify-center px-6 py-12">

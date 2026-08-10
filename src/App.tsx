@@ -736,12 +736,12 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-full select-none overflow-hidden bg-black text-zinc-100 font-sans">
+    <div className="flex h-screen w-full select-none overflow-hidden bg-ink text-ink font-sans">
       {/* Immersive Landing Page View */}
       {showLanding ? (
-        <div className="fixed inset-0 z-50 overflow-hidden text-zinc-100 flex flex-col items-center justify-center bg-black">
+        <div className="fixed inset-0 z-50 overflow-hidden text-ink flex flex-col items-center justify-center bg-ink">
           {/* Background Image Layer (z-0) */}
-          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-black">
+          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-ink">
             <img 
               src={landingBgSrc} 
               alt="GrainLink Landing Background"
@@ -757,7 +757,7 @@ export default function App() {
           </div>
 
           {/* Gentle Gradient Overlay for Readability (z-10) */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/40 to-black/20 z-10 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-ink/50 via-ink/25 to-ink/10 z-10 pointer-events-none" />
           
           {/* Main Content Area (z-20) */}
           <div className="relative z-20 w-full h-full overflow-y-auto flex flex-col items-center justify-center px-6 py-12">
@@ -765,25 +765,25 @@ export default function App() {
             
             {/* Logo / Brand Accent */}
             <div className="flex items-center gap-3 mb-6">
-              <span className="text-4xl font-black text-white tracking-tight">
-                Grain<span className="text-amber-400">Link</span>
+              <span className="text-4xl font-black text-ink tracking-tight font-display">
+                Grain<span className="text-gold">Link</span>
               </span>
             </div>
 
-            <h1 className="text-3xl md:text-5xl font-light tracking-[0.25em] text-center text-white mb-12 uppercase">
+            <h1 className="text-3xl md:text-5xl font-light tracking-[0.25em] text-center text-ink mb-12 uppercase font-display">
               Site Planner
             </h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
               
               {/* Left Box: New Site / Resume */}
-              <div className="bg-neutral-950/80 border border-neutral-900/80 rounded-3xl p-8 flex flex-col justify-between hover:border-neutral-800 transition-all shadow-xl">
+              <div className="bg-surface/90 border border-line/90 rounded-3xl p-8 flex flex-col justify-between hover:border-line transition-all shadow-xl">
                 <div className="space-y-4">
-                  <div className="inline-flex p-3 bg-amber-400/10 text-amber-400 rounded-2xl border border-amber-400/20">
+                  <div className="inline-flex p-3 bg-gold-light text-gold rounded-2xl border border-gold/30">
                     <Plus size={24} />
                   </div>
-                  <h2 className="text-xl font-bold text-white">Start Planning</h2>
-                  <p className="text-xs text-neutral-400 leading-relaxed">
+                  <h2 className="text-xl font-bold text-ink">Start Planning</h2>
+                  <p className="text-xs text-ink-soft leading-relaxed">
                     Create a brand new site plan layout or resume your session. You can also import any local JSON backup file to instantly load it.
                   </p>
                 </div>
@@ -798,7 +798,7 @@ export default function App() {
                       });
                       navigateTo(false, 'planner');
                     }}
-                    className="w-full py-3.5 bg-amber-400 hover:bg-amber-300 text-black font-black text-xs uppercase rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-amber-400/5"
+                    className="w-full py-3.5 bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-gold/10"
                   >
                     <Plus size={14} strokeWidth={2.5} />
                     Create New Site Plan
@@ -809,18 +809,18 @@ export default function App() {
                       onClick={() => {
                         navigateTo(false, 'planner');
                       }}
-                      className="w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-800 font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer animate-pulse"
+                      className="w-full py-3.5 bg-surface hover:bg-paper text-ink border border-line font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer animate-pulse"
                     >
-                      <Play size={12} className="text-amber-400 fill-amber-400" />
+                      <Play size={12} className="text-gold fill-gold" />
                       Resume Active Session
                     </button>
                   )}
 
                   <button
                     onClick={() => landingFileInputRef.current?.click()}
-                    className="w-full py-3.5 bg-neutral-950 hover:bg-neutral-900 text-neutral-300 border border-neutral-900/80 font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    className="w-full py-3.5 bg-surface hover:bg-surface text-ink-soft border border-line/90 font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
-                    <FileCode size={12} className="text-neutral-500" />
+                    <FileCode size={12} className="text-ink-soft" />
                     Import JSON File
                   </button>
                   <input
@@ -834,13 +834,13 @@ export default function App() {
               </div>
 
               {/* Right Box: Google Drive Cloud Sync */}
-              <div className="bg-neutral-950/80 border border-neutral-900/80 rounded-3xl p-8 flex flex-col hover:border-neutral-800 transition-all shadow-xl">
+              <div className="bg-surface/90 border border-line/90 rounded-3xl p-8 flex flex-col hover:border-line transition-all shadow-xl">
                 <div className="space-y-4">
-                  <div className="inline-flex p-3 bg-amber-400/10 text-amber-400 rounded-2xl border border-amber-400/20">
+                  <div className="inline-flex p-3 bg-gold-light text-gold rounded-2xl border border-gold/30">
                     <Cloud size={24} />
                   </div>
-                  <h2 className="text-xl font-bold text-white">Google Drive Sync</h2>
-                  <p className="text-xs text-neutral-400 leading-relaxed">
+                  <h2 className="text-xl font-bold text-ink">Google Drive Sync</h2>
+                  <p className="text-xs text-ink-soft leading-relaxed">
                     Sign in to connect with Google Drive. Pull, sync, and load central layout designs directly from your cloud storage.
                   </p>
                 </div>
@@ -856,7 +856,7 @@ export default function App() {
                   {!landingToken ? (
                     <button
                       onClick={handleConnectLandingDrive}
-                      className="w-full flex items-center justify-center gap-3 bg-white hover:bg-neutral-100 text-neutral-800 font-bold rounded-xl text-xs py-3.5 px-4 shadow-md transition-all cursor-pointer"
+                      className="w-full flex items-center justify-center gap-3 bg-surface hover:bg-paper text-ink font-bold rounded-xl text-xs py-3.5 px-4 shadow-md transition-all cursor-pointer"
                     >
                       <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4.5 h-4.5 shrink-0">
                         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
@@ -868,28 +868,28 @@ export default function App() {
                     </button>
                   ) : (
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-neutral-900 rounded-xl border border-neutral-800">
+                      <div className="flex items-center justify-between p-3 bg-surface rounded-xl border border-line">
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-white truncate">{landingUser?.displayName || 'Authorized Account'}</p>
-                          <p className="text-[10px] text-zinc-500 truncate">{landingUser?.email}</p>
+                          <p className="text-xs font-bold text-ink truncate">{landingUser?.displayName || 'Authorized Account'}</p>
+                          <p className="text-[10px] text-ink-soft truncate">{landingUser?.email}</p>
                         </div>
                         <button
                           onClick={handleDisconnectLandingDrive}
-                          className="text-[10px] font-bold text-neutral-500 hover:text-red-400 uppercase tracking-wider pl-2 cursor-pointer"
+                          className="text-[10px] font-bold text-ink-soft hover:text-red-400 uppercase tracking-wider pl-2 cursor-pointer"
                         >
                           Sign Out
                         </button>
                       </div>
 
-                      <div className="border border-neutral-900 bg-neutral-950/60 rounded-2xl p-3 flex flex-col">
-                        <div className="flex items-center justify-between pb-2 border-b border-neutral-900 mb-2">
-                          <span className="text-[10px] font-black uppercase text-neutral-500 tracking-wider">Project File Library</span>
+                      <div className="border border-line bg-surface/80 rounded-2xl p-3 flex flex-col">
+                        <div className="flex items-center justify-between pb-2 border-b border-line mb-2">
+                          <span className="text-[10px] font-black uppercase text-ink-soft tracking-wider">Project File Library</span>
                           <button
                             onClick={() => {
                               fetchLandingDriveFiles(landingToken);
                               setLandingSearchQuery('');
                             }}
-                            className="p-1 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                            className="p-1 text-ink-soft hover:text-ink transition-colors cursor-pointer"
                             title="Refresh list"
                           >
                             <RefreshCw size={12} className={isLoadingLandingDrive ? 'animate-spin' : ''} />
@@ -898,7 +898,7 @@ export default function App() {
 
                         {/* Drive File Search Input */}
                         <div className="relative mb-2.5">
-                          <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-neutral-500">
+                          <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-ink-soft">
                             <Search size={12} />
                           </span>
                           <input
@@ -906,12 +906,12 @@ export default function App() {
                             value={landingSearchQuery}
                             onChange={(e) => setLandingSearchQuery(e.target.value)}
                             placeholder="Search file in Google Drive..."
-                            className="w-full pl-8 pr-7 py-1.5 bg-neutral-900 hover:bg-neutral-900/80 focus:bg-neutral-900/60 text-[11px] text-white placeholder-neutral-500 border border-neutral-800 rounded-lg focus:outline-none focus:border-amber-400/50 transition-all font-medium"
+                            className="w-full pl-8 pr-7 py-1.5 bg-surface hover:bg-surface/90 focus:bg-surface/80 text-[11px] text-ink placeholder-ink-soft border border-line rounded-lg focus:outline-none focus:border-gold/50 transition-all font-medium"
                           />
                           {landingSearchQuery && (
                             <button
                               onClick={() => setLandingSearchQuery('')}
-                              className="absolute inset-y-0 right-0 pr-2 flex items-center text-neutral-500 hover:text-white transition-colors cursor-pointer"
+                              className="absolute inset-y-0 right-0 pr-2 flex items-center text-ink-soft hover:text-ink transition-colors cursor-pointer"
                             >
                               <X size={12} />
                             </button>
@@ -920,7 +920,7 @@ export default function App() {
 
                         <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
                           {isLoadingLandingDrive ? (
-                            <div className="text-[10px] text-neutral-500 italic py-4 text-center flex items-center justify-center gap-1.5">
+                            <div className="text-[10px] text-ink-soft italic py-4 text-center flex items-center justify-center gap-1.5">
                               <RefreshCw size={12} className="animate-spin" />
                               Fetching from Drive...
                             </div>
@@ -931,7 +931,7 @@ export default function App() {
                               );
                               if (filtered.length === 0) {
                                 return (
-                                  <div className="text-[10px] text-neutral-500 italic py-6 text-center">
+                                  <div className="text-[10px] text-ink-soft italic py-6 text-center">
                                     No matching files found
                                   </div>
                                 );
@@ -940,24 +940,24 @@ export default function App() {
                                 <div
                                   key={file.id}
                                   onClick={() => handleLoadFromLandingDrive(file.id, file.name)}
-                                  className="flex items-center justify-between p-2 hover:bg-neutral-900 rounded-xl cursor-pointer group transition-colors border border-transparent hover:border-neutral-800"
+                                  className="flex items-center justify-between p-2 hover:bg-surface rounded-xl cursor-pointer group transition-colors border border-transparent hover:border-line"
                                 >
                                   <div className="min-w-0 flex-1 pr-2">
-                                    <p className="text-xs font-bold text-white truncate group-hover:text-amber-400 transition-all">
+                                    <p className="text-xs font-bold text-ink truncate group-hover:text-gold transition-all">
                                       {file.name}
                                     </p>
                                     {file.modifiedTime && (
-                                      <p className="text-[9px] text-neutral-500">
+                                      <p className="text-[9px] text-ink-soft">
                                         Modified {new Date(file.modifiedTime).toLocaleDateString()}
                                       </p>
                                     )}
                                   </div>
-                                  <ChevronRight size={14} className="text-neutral-600 group-hover:text-amber-400 transition-all" />
+                                  <ChevronRight size={14} className="text-ink-soft group-hover:text-gold transition-all" />
                                 </div>
                               ));
                             })()
                           ) : (
-                            <div className="text-[10px] text-neutral-600 italic py-6 text-center">
+                            <div className="text-[10px] text-ink-soft italic py-6 text-center">
                               No plans found in folder
                             </div>
                           )}
@@ -970,7 +970,7 @@ export default function App() {
 
             </div>
 
-            <div className="mt-12 text-[10px] font-semibold text-neutral-600 uppercase tracking-widest text-center">
+            <div className="mt-12 text-[10px] font-semibold text-ink-soft uppercase tracking-widest text-center">
               GrainLink Suite © 2026 • Secure & Sandbox Compliant
             </div>
           </div>
@@ -980,25 +980,25 @@ export default function App() {
 
       {/* Global Loading Overlay */}
       {loading && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center z-50 transition-all duration-300">
-          <Loader2 className="w-16 h-16 text-amber-400 animate-spin mb-4" />
-          <h3 className="text-xl font-bold tracking-tight text-white uppercase">Generating Multi-Yard Report</h3>
-          <p id="loading-text" className="text-sm text-zinc-400 mt-2">
+        <div className="fixed inset-0 bg-ink/70 backdrop-blur-md flex flex-col items-center justify-center z-50 transition-all duration-300">
+          <Loader2 className="w-16 h-16 text-gold animate-spin mb-4" />
+          <h3 className="text-xl font-bold tracking-tight text-ink uppercase">Generating Multi-Yard Report</h3>
+          <p id="loading-text" className="text-sm text-ink-soft mt-2">
             {loadingText}
           </p>
         </div>
       )}
 
       {/* Main Sidebar */}
-      <aside className="w-64 bg-neutral-950 border-r border-neutral-900 flex flex-col z-20 shadow-2xl shrink-0 overflow-y-auto">
+      <aside className="w-64 bg-surface border-r border-line flex flex-col z-20 shadow-2xl shrink-0 overflow-y-auto">
         <div 
           onClick={() => setShowLanding(true)}
-          className="p-6 border-b border-neutral-900 flex flex-col items-start cursor-pointer hover:bg-neutral-900/20 transition-all group"
+          className="p-6 border-b border-line flex flex-col items-start cursor-pointer hover:bg-surface/40 transition-all group"
           title="Go to Switch Site / Project"
         >
           <div className="flex items-center gap-2">
-            <span id="brand-logo-text" className="text-xl font-black text-white tracking-tight group-hover:text-amber-400 transition-colors">
-              Grain<span className="text-amber-400">Link</span>
+            <span id="brand-logo-text" className="text-xl font-black text-ink tracking-tight group-hover:text-gold transition-colors font-display">
+              Grain<span className="text-gold">Link</span>
             </span>
           </div>
 
@@ -1014,8 +1014,8 @@ export default function App() {
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
                 ) : isAutoSaving ? (
                   <>
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-gold-dark"></span>
                   </>
                 ) : (
                   <>
@@ -1024,12 +1024,12 @@ export default function App() {
                   </>
                 )
               ) : (
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-neutral-700"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-line"></span>
               )}
             </span>
             <span className="text-[10px] font-semibold uppercase shrink-0 flex items-center gap-1">
               {isAutoSaving ? (
-                <span className="text-amber-500 animate-pulse">saving...</span>
+                <span className="text-gold-dark animate-pulse">saving...</span>
               ) : landingToken ? (
                 autoSaveError ? (
                   <span className="text-red-500">error saving</span>
@@ -1037,10 +1037,10 @@ export default function App() {
                   <span className="text-emerald-500">autosave</span>
                 )
               ) : (
-                <span className="text-neutral-600">autosave offline</span>
+                <span className="text-ink-soft">autosave offline</span>
               )}
               {landingToken && lastAutoSaved && (
-                <span className="text-[9px] text-neutral-600 font-mono shrink-0">
+                <span className="text-[9px] text-ink-soft font-mono shrink-0">
                   • {lastAutoSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }).toLowerCase()}
                 </span>
               )}
@@ -1052,9 +1052,9 @@ export default function App() {
         <nav className="flex-1 px-4 py-6 space-y-1.5 font-semibold text-sm">
           <button
             onClick={() => navigateTo(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-neutral-400 hover:bg-neutral-900/50 hover:text-white transition-all text-left cursor-pointer font-semibold"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-ink-soft hover:bg-surface/70 hover:text-ink transition-all text-left cursor-pointer font-semibold"
           >
-            <Home size={16} className="text-amber-400" />
+            <Home size={16} className="text-gold" />
             Home
           </button>
 
@@ -1062,85 +1062,85 @@ export default function App() {
             onClick={() => navigateTo(false, 'dashboard')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left cursor-pointer ${
               activeTab === 'dashboard'
-                ? 'bg-neutral-900 text-white border-l-4 border-amber-400 font-black'
-                : 'text-neutral-400 hover:bg-neutral-900/50 hover:text-white'
+                ? 'bg-surface text-ink border-l-4 border-gold font-black'
+                : 'text-ink-soft hover:bg-surface/70 hover:text-ink'
             }`}
           >
-            <LayoutDashboard size={16} className={activeTab === 'dashboard' ? 'text-amber-400' : ''} />
+            <LayoutDashboard size={16} className={activeTab === 'dashboard' ? 'text-gold' : ''} />
             Project Dashboard
           </button>
           <button
             onClick={() => navigateTo(false, 'planner')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left cursor-pointer ${
               activeTab === 'planner'
-                ? 'bg-neutral-900 text-white border-l-4 border-amber-400 font-black'
-                : 'text-neutral-400 hover:bg-neutral-900/50 hover:text-white'
+                ? 'bg-surface text-ink border-l-4 border-gold font-black'
+                : 'text-ink-soft hover:bg-surface/70 hover:text-ink'
             }`}
           >
-            <MapIcon size={16} className={activeTab === 'planner' ? 'text-amber-400' : ''} />
+            <MapIcon size={16} className={activeTab === 'planner' ? 'text-gold' : ''} />
             2D Site Planner
           </button>
           <button
             onClick={() => navigateTo(false, 'estimator')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left cursor-pointer ${
               activeTab === 'estimator'
-                ? 'bg-neutral-900 text-white border-l-4 border-amber-400 font-black'
-                : 'text-neutral-400 hover:bg-neutral-900/50 hover:text-white'
+                ? 'bg-surface text-ink border-l-4 border-gold font-black'
+                : 'text-ink-soft hover:bg-surface/70 hover:text-ink'
             }`}
           >
-            <Compass size={16} className={activeTab === 'estimator' ? 'text-amber-400' : ''} />
+            <Compass size={16} className={activeTab === 'estimator' ? 'text-gold' : ''} />
             Cable Measuring
           </button>
           <button
             onClick={() => navigateTo(false, 'binSpecs')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left cursor-pointer ${
               activeTab === 'binSpecs'
-                ? 'bg-neutral-900 text-white border-l-4 border-amber-400 font-black'
-                : 'text-neutral-400 hover:bg-neutral-900/50 hover:text-white'
+                ? 'bg-surface text-ink border-l-4 border-gold font-black'
+                : 'text-ink-soft hover:bg-surface/70 hover:text-ink'
             }`}
           >
-            <FileText size={16} className={activeTab === 'binSpecs' ? 'text-amber-400' : ''} />
+            <FileText size={16} className={activeTab === 'binSpecs' ? 'text-gold' : ''} />
             Bin Specs
           </button>
 
           {/* Shortcuts Help Panel */}
-          <div className="pt-4 border-t border-neutral-900/50 mt-4 px-4 pb-2">
-            <h2 className="text-[9px] font-bold uppercase tracking-[0.2em] text-neutral-500 mb-2.5">Shortcuts</h2>
-            <div className="space-y-2 text-neutral-400 font-semibold text-[10px]">
+          <div className="pt-4 border-t border-line/70 mt-4 px-4 pb-2">
+            <h2 className="text-[9px] font-bold uppercase tracking-[0.2em] text-ink-soft mb-2.5">Shortcuts</h2>
+            <div className="space-y-2 text-ink-soft font-semibold text-[10px]">
               <div className="flex justify-between items-center">
                 <span>Undo</span>
-                <span className="text-[8px] text-neutral-500 font-mono bg-neutral-900/80 px-1 rounded border border-neutral-850">Cmd+Z</span>
+                <span className="text-[8px] text-ink-soft font-mono bg-surface/90 px-1 rounded border border-line">Cmd+Z</span>
               </div>
               <div className="flex justify-between items-center">
                 <span>Duplicate</span>
-                <span className="text-[8px] text-neutral-500 font-mono bg-neutral-900/80 px-1 rounded border border-neutral-850">Cmd+D</span>
+                <span className="text-[8px] text-ink-soft font-mono bg-surface/90 px-1 rounded border border-line">Cmd+D</span>
               </div>
               <div className="flex justify-between items-center">
                 <span>Delete</span>
-                <span className="text-[8px] text-neutral-500 font-mono bg-neutral-900/80 px-1 rounded border border-neutral-850">Del</span>
+                <span className="text-[8px] text-ink-soft font-mono bg-surface/90 px-1 rounded border border-line">Del</span>
               </div>
             </div>
           </div>
         </nav>
 
         {/* Customer & Project Metadata Inputs */}
-        <div className="p-6 border-t border-neutral-900 bg-neutral-950/40 space-y-4">
+        <div className="p-6 border-t border-line bg-surface/60 space-y-4">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-[9px] font-black uppercase text-neutral-500 tracking-wider">
+              <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider">
                 Unique Project ID
               </label>
               <div className="flex items-center gap-1">
                 <button
                   onClick={handleCopyProjectId}
-                  className="p-1 text-neutral-400 hover:text-amber-400 transition-colors cursor-pointer"
+                  className="p-1 text-ink-soft hover:text-gold transition-colors cursor-pointer"
                   title="Copy Unique Project ID"
                 >
                   {copiedId ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                 </button>
                 <button
                   onClick={() => updateProjectWithHistory((prev) => ({ ...prev, id: generateProjectId() }))}
-                  className="p-1 text-neutral-400 hover:text-amber-400 transition-colors cursor-pointer"
+                  className="p-1 text-ink-soft hover:text-gold transition-colors cursor-pointer"
                   title="Generate New Unique ID"
                 >
                   <RefreshCw size={12} />
@@ -1151,25 +1151,25 @@ export default function App() {
               type="text"
               value={project.id || ''}
               readOnly
-              className="w-full bg-neutral-900/50 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-amber-400 font-mono font-bold outline-none transition-all cursor-not-allowed"
+              className="w-full bg-surface/70 border border-line rounded-lg px-3 py-2 text-xs text-gold font-mono font-bold outline-none transition-all cursor-not-allowed"
               placeholder="e.g. PRJ-102938"
             />
           </div>
 
           <div>
-            <label className="block text-[9px] font-black uppercase text-neutral-500 tracking-wider mb-1">
+            <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1">
               Project Name
             </label>
             <input
               type="text"
               value={project.name}
               onChange={(e) => updateProjectWithHistory((prev) => ({ ...prev, name: e.target.value }))}
-              className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-white focus:border-amber-400 outline-none transition-all font-semibold"
+              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-ink focus:border-gold outline-none transition-all font-semibold"
             />
           </div>
 
           <div>
-            <label className="block text-[9px] font-black uppercase text-neutral-500 tracking-wider mb-1">
+            <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1">
               Customer Name
             </label>
             <input
@@ -1181,11 +1181,11 @@ export default function App() {
                   customer: { ...prev.customer, name: e.target.value },
                 }))
               }
-              className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-white focus:border-amber-400 outline-none transition-all font-semibold"
+              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-ink focus:border-gold outline-none transition-all font-semibold"
             />
           </div>
           <div>
-            <label className="block text-[9px] font-black uppercase text-neutral-500 tracking-wider mb-1">
+            <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1">
               Customer Phone
             </label>
             <input
@@ -1197,11 +1197,11 @@ export default function App() {
                   customer: { ...prev.customer, phone: e.target.value },
                 }))
               }
-              className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-white focus:border-amber-400 outline-none transition-all font-semibold"
+              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-ink focus:border-gold outline-none transition-all font-semibold"
             />
           </div>
           <div>
-            <label className="block text-[9px] font-black uppercase text-neutral-500 tracking-wider mb-1">
+            <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1">
               Customer Email
             </label>
             <input
@@ -1213,12 +1213,12 @@ export default function App() {
                   customer: { ...prev.customer, email: e.target.value },
                 }))
               }
-              className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-white focus:border-amber-400 outline-none transition-all font-semibold"
+              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-ink focus:border-gold outline-none transition-all font-semibold"
               placeholder="customer@email.com"
             />
           </div>
           <div>
-            <label className="block text-[9px] font-black uppercase text-neutral-500 tracking-wider mb-1">
+            <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1">
               Customer Location / Address
             </label>
             <input
@@ -1230,26 +1230,26 @@ export default function App() {
                   customer: { ...prev.customer, location: e.target.value },
                 }))
               }
-              className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-white focus:border-amber-400 outline-none transition-all font-semibold"
+              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-ink focus:border-gold outline-none transition-all font-semibold"
               placeholder="e.g. Regina, SK"
             />
           </div>
         </div>
 
         {/* Global Unified PDF Report Export */}
-        <div className="p-6 border-t border-neutral-900 bg-neutral-950 flex flex-col gap-3">
-          <label className="flex items-center gap-2.5 text-[10px] font-black uppercase text-neutral-400 select-none cursor-pointer tracking-wider hover:text-white transition-colors">
+        <div className="p-6 border-t border-line bg-surface flex flex-col gap-3">
+          <label className="flex items-center gap-2.5 text-[10px] font-black uppercase text-ink-soft select-none cursor-pointer tracking-wider hover:text-ink transition-colors">
             <input
               type="checkbox"
               checked={includeAssetDirectory}
               onChange={(e) => setIncludeAssetDirectory(e.target.checked)}
-              className="accent-amber-400 h-3.5 w-3.5 rounded border-neutral-800 bg-neutral-900 text-amber-400 focus:ring-0 cursor-pointer"
+              className="accent-gold h-3.5 w-3.5 rounded border-line bg-surface text-gold focus:ring-0 cursor-pointer"
             />
             Include Assets Directory Table
           </label>
           <button
             onClick={triggerPDFExport}
-            className="w-full py-3.5 bg-amber-400 hover:bg-amber-300 text-black font-black text-xs uppercase rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-400/10 tracking-wider cursor-pointer"
+            className="w-full py-3.5 bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-gold/15 tracking-wider cursor-pointer"
           >
             GENERATE SUITE PDF
             <Download size={14} strokeWidth={2.5} />
@@ -1258,27 +1258,27 @@ export default function App() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 h-screen relative flex flex-col bg-neutral-100 overflow-hidden">
+      <main className="flex-1 h-screen relative flex flex-col bg-paper overflow-hidden">
         {/* Top Header Bar for Project ID and View Context */}
-        <header className="h-11 bg-neutral-950 border-b border-neutral-900 px-6 flex items-center justify-between shrink-0 text-xs select-none z-10">
+        <header className="h-11 bg-surface border-b border-line px-6 flex items-center justify-between shrink-0 text-xs select-none z-10">
           <div className="flex items-center gap-3">
-            <span className="font-extrabold uppercase tracking-widest text-neutral-400 text-[11px]">
+            <span className="font-extrabold uppercase tracking-widest text-ink-soft text-[11px]">
               {activeTab === 'dashboard' && 'Dashboard Overview'}
               {activeTab === 'planner' && '2D Site Planner'}
               {activeTab === 'estimator' && 'Cable Estimator'}
               {activeTab === 'binSpecs' && 'Bin Specs Library'}
             </span>
-            <span className="text-neutral-800">•</span>
-            <span className="font-black text-white uppercase tracking-tight text-xs">{project.name}</span>
+            <span className="text-ink">•</span>
+            <span className="font-black text-ink uppercase tracking-tight text-xs">{project.name}</span>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-2.5 py-1 bg-neutral-900 border border-neutral-850 rounded-lg text-amber-400 font-mono text-xs font-bold shadow-sm">
-              <span className="text-[9px] text-neutral-500 font-sans uppercase font-bold tracking-wider">Project ID:</span>
+            <div className="flex items-center gap-2 px-2.5 py-1 bg-surface border border-line rounded-lg text-gold font-mono text-xs font-bold shadow-sm">
+              <span className="text-[9px] text-ink-soft font-sans uppercase font-bold tracking-wider">Project ID:</span>
               <span className="tracking-wide">{project.id || 'PRJ-N/A'}</span>
               <button
                 onClick={handleCopyProjectId}
-                className="p-0.5 text-neutral-400 hover:text-white transition-colors cursor-pointer ml-0.5 rounded hover:bg-neutral-800"
+                className="p-0.5 text-ink-soft hover:text-ink transition-colors cursor-pointer ml-0.5 rounded hover:bg-paper"
                 title="Copy Unique Project ID"
               >
                 {copiedId ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
@@ -1332,23 +1332,23 @@ export default function App() {
       {/* Hidden Rendering Area for html2canvas PDF Captures */}
       <div
         id="pdf-render-zone"
-        className="fixed top-0 left-0 w-[800px] bg-white text-black z-[-1] opacity-0 pointer-events-none"
+        className="fixed top-0 left-0 w-[800px] bg-surface text-ink z-[-1] opacity-0 pointer-events-none"
       />
 
       {/* GitHub Sync Modal */}
       {showGitModal && isDevMode && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-          <div className="bg-neutral-950 border border-neutral-900 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-ink/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-surface border border-line rounded-2xl max-w-md w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-neutral-900 flex items-center justify-between bg-neutral-950">
-              <div className="flex items-center gap-2 text-white">
-                <Github size={18} className="text-amber-400" />
+            <div className="px-6 py-4 border-b border-line flex items-center justify-between bg-surface">
+              <div className="flex items-center gap-2 text-ink">
+                <Github size={18} className="text-gold" />
                 <span className="font-black text-sm uppercase tracking-wider">Push to GitHub</span>
               </div>
               {!isPushingToGit && (
                 <button
                   onClick={() => setShowGitModal(false)}
-                  className="text-neutral-500 hover:text-white transition-colors cursor-pointer"
+                  className="text-ink-soft hover:text-ink transition-colors cursor-pointer"
                 >
                   <X size={18} />
                 </button>
@@ -1359,10 +1359,10 @@ export default function App() {
             <div className="p-6">
               {isPushingToGit ? (
                 <div className="py-10 flex flex-col items-center justify-center text-center space-y-4">
-                  <Loader2 size={40} className="text-amber-400 animate-spin" />
+                  <Loader2 size={40} className="text-gold animate-spin" />
                   <div>
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Deploying changes...</h3>
-                    <p className="text-xs text-neutral-500 mt-1">Staging files and pushing to production repository branch.</p>
+                    <h3 className="text-sm font-bold text-ink uppercase tracking-wider">Deploying changes...</h3>
+                    <p className="text-xs text-ink-soft mt-1">Staging files and pushing to production repository branch.</p>
                   </div>
                 </div>
               ) : gitResult ? (
@@ -1380,10 +1380,10 @@ export default function App() {
                   )}
 
                   <div>
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                    <h3 className="text-sm font-bold text-ink uppercase tracking-wider">
                       {gitResult.success ? 'Sync Completed!' : 'Sync Failed'}
                     </h3>
-                    <p className="text-xs text-neutral-400 mt-2 leading-relaxed px-4">
+                    <p className="text-xs text-ink-soft mt-2 leading-relaxed px-4">
                       {gitResult.message}
                     </p>
                   </div>
@@ -1394,7 +1394,7 @@ export default function App() {
                         setShowGitModal(false);
                         setGitResult(null);
                       }}
-                      className="w-full py-2.5 bg-neutral-900 hover:bg-neutral-850 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors border border-neutral-800 cursor-pointer"
+                      className="w-full py-2.5 bg-surface hover:bg-paper text-ink rounded-xl text-xs font-bold uppercase tracking-wider transition-colors border border-line cursor-pointer"
                     >
                       Dismiss
                     </button>
@@ -1403,15 +1403,15 @@ export default function App() {
               ) : (
                 <div className="space-y-4">
                   <div>
-                    <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest block mb-2">
+                    <span className="text-[10px] font-bold text-ink-soft uppercase tracking-widest block mb-2">
                       Modified Files ({gitStatus?.changes?.length || 0})
                     </span>
-                    <div className="bg-neutral-900 border border-neutral-850 rounded-xl p-3 max-h-36 overflow-y-auto font-mono text-[10px] text-neutral-400 space-y-1">
+                    <div className="bg-surface border border-line rounded-xl p-3 max-h-36 overflow-y-auto font-mono text-[10px] text-ink-soft space-y-1">
                       {gitStatus?.changes && gitStatus.changes.length > 0 ? (
                         gitStatus.changes.map((change, i) => (
                           <div key={i} className="flex items-center gap-2">
                             <span className={`font-bold uppercase ${
-                              change.startsWith('M') ? 'text-amber-400' :
+                              change.startsWith('M') ? 'text-gold' :
                               change.startsWith('A') || change.includes('??') ? 'text-emerald-400' : 'text-red-400'
                             }`}>
                               {change.slice(0, 2)}
@@ -1420,7 +1420,7 @@ export default function App() {
                           </div>
                         ))
                       ) : (
-                        <div className="text-center text-neutral-600 py-4 uppercase tracking-wider">
+                        <div className="text-center text-ink-soft py-4 uppercase tracking-wider">
                           No pending changes
                         </div>
                       )}
@@ -1428,7 +1428,7 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1.5">
+                    <label className="block text-[10px] font-bold text-ink-soft uppercase tracking-widest mb-1.5">
                       Commit Message
                     </label>
                     <input
@@ -1436,7 +1436,7 @@ export default function App() {
                       value={gitPushMessage}
                       onChange={(e) => setGitPushMessage(e.target.value)}
                       placeholder="e.g. Update grain bin dimensions"
-                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-amber-400 outline-none transition-all font-semibold"
+                      className="w-full bg-surface border border-line rounded-xl px-4 py-2.5 text-xs text-ink focus:border-gold outline-none transition-all font-semibold"
                     />
                   </div>
 
@@ -1444,14 +1444,14 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setShowGitModal(false)}
-                      className="flex-1 py-2.5 bg-neutral-900 hover:bg-neutral-850 text-neutral-400 hover:text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors border border-neutral-800 cursor-pointer"
+                      className="flex-1 py-2.5 bg-surface hover:bg-paper text-ink-soft hover:text-ink rounded-xl text-xs font-bold uppercase tracking-wider transition-colors border border-line cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="button"
                       onClick={() => handleGitPush(gitPushMessage)}
-                      className="flex-1 py-2.5 bg-amber-400 hover:bg-amber-300 text-black rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-amber-400/10 cursor-pointer"
+                      className="flex-1 py-2.5 bg-gold hover:bg-gold-hover text-ink rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-gold/15 cursor-pointer"
                     >
                       Push & Deploy
                     </button>

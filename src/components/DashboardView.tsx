@@ -479,7 +479,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           {/* Card 1: Combined Project Scope Overview */}
           <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between" style={{ background: '#FFFFFF', border: '1px solid rgba(43, 42, 37, 0.08)' }}>
-            <span className="text-[10px] text-ink-soft font-black uppercase tracking-wider mb-2 block">Project Scope Overview</span>
+            <span className="text-[10px] text-ink-soft font-black uppercase tracking-wider mb-2 block">Overview</span>
             <div className="grid grid-cols-3 gap-2 h-full items-center">
               {/* Total Capacity */}
               <div className="border-r border-line pr-2">
@@ -516,7 +516,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Card 2: Placed Hardware Summary */}
           <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between" style={{ background: '#FFFFFF', border: '1px solid rgba(43, 42, 37, 0.08)' }}>
-            <span className="text-[10px] text-ink-soft font-black uppercase tracking-wider mb-2 block">Placed Hardware Summary</span>
+            <span className="text-[10px] text-ink-soft font-black uppercase tracking-wider mb-2 block">Equipment Summary</span>
             <div className="grid grid-cols-3 gap-1 h-full items-center text-center">
               {/* Chester-X */}
               <div className="border-r border-line px-1">
@@ -697,7 +697,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Assets Inventory Table */}
         <div className="glass-panel rounded-2xl flex-1 min-h-[180px] flex flex-col border border-line bg-surface overflow-hidden">
           <div className="p-5 border-b border-line flex justify-between items-center shrink-0">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-ink">Asset List</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-ink">Equipment List</h3>
             <button
               onClick={() => onSwitchTab('planner')}
               className="px-3.5 py-1.5 bg-surface hover:bg-surface text-ink-soft text-[10px] font-bold uppercase rounded-lg border border-line transition-colors"
@@ -710,8 +710,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <thead className="sticky top-0 bg-surface/95 backdrop-blur-sm z-10">
                 <tr className="border-b border-line text-[9px] font-black uppercase text-ink-soft tracking-wider bg-surface/20">
                   <th className="p-4">Yard Location</th>
-                  <th className="p-4">Asset Label</th>
-                  <th className="p-4">Asset Type</th>
+                  <th className="p-4">Name</th>
+                  <th className="p-4">Type</th>
                   <th className="p-4">Dimensions</th>
                   <th className="p-4">Storage (BU)</th>
                   <th className="p-4 text-right">Actions</th>
@@ -782,7 +782,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       return (
                         <tr key={bin.id} className="hover:bg-surface/20 transition-colors border-b border-line/30">
                           <td className="p-4 font-bold text-ink-soft text-xs">{yard.name}</td>
-                          <td className="p-4 font-bold text-ink">{bin.name || 'Unnamed Asset'}</td>
+                          <td className="p-4 font-bold text-ink">{bin.name || 'Unnamed Item'}</td>
                           <td className="p-4">{typeBadge}</td>
                           <td className="p-4 text-ink-soft font-semibold">{dimensionsStr}</td>
                           <td className="p-4 font-mono">{capacityStr}</td>
@@ -801,8 +801,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   })()
                 ) : (
                   <tr>
-                    <td colSpan={6} className="p-12 text-center text-ink-soft uppercase text-xs font-bold tracking-widest">
-                      No assets placed in any yard. Add units in the Site Planner.
+                    <td colSpan={6} className="p-12 text-center">
+                      <p className="text-ink-soft text-xs font-semibold mb-3">
+                        Nothing added yet.
+                      </p>
+                      <button
+                        onClick={() => onSwitchTab('planner')}
+                        className="px-4 py-2 bg-gold hover:bg-gold-hover text-ink font-bold text-xs rounded-lg cursor-pointer transition-colors"
+                      >
+                        Add your first bin
+                      </button>
                     </td>
                   </tr>
                 )}

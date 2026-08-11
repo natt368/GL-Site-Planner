@@ -458,15 +458,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="flex-[2] flex flex-col space-y-6 h-full overflow-hidden pr-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 id="dashboard-project-name" className="text-2xl md:text-3xl font-black text-neutral-900 tracking-tight uppercase">
+            <h2 id="dashboard-project-name" className="text-2xl md:text-3xl font-black text-ink tracking-tight uppercase">
               {project.name}
             </h2>
-            <div className="flex items-center gap-2 px-3 py-1 bg-neutral-950 text-amber-400 border border-neutral-800 rounded-xl text-xs font-mono font-bold shadow-sm">
-              <span className="text-[10px] text-neutral-500 font-sans uppercase font-bold tracking-wider">Project ID:</span>
+            <div className="flex items-center gap-2 px-3 py-1 bg-surface text-gold border border-line rounded-xl text-xs font-mono font-bold shadow-sm">
+              <span className="text-[10px] text-ink-soft font-sans uppercase font-bold tracking-wider">Project ID:</span>
               <span className="tracking-wide">{project.id || 'N/A'}</span>
               <button
                 onClick={handleCopyProjectId}
-                className="p-1 text-neutral-400 hover:text-white transition-colors cursor-pointer rounded bg-neutral-900 border border-neutral-800 ml-1"
+                className="p-1 text-ink-soft hover:text-ink transition-colors cursor-pointer rounded bg-surface border border-line ml-1"
                 title="Copy Unique Project ID"
               >
                 {copiedId ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
@@ -478,49 +478,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           {/* Card 1: Combined Project Scope Overview */}
-          <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between" style={{ background: '#0a0a0c', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-            <span className="text-[10px] text-neutral-500 font-black uppercase tracking-wider mb-2 block">Project Scope Overview</span>
+          <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between" style={{ background: '#FFFFFF', border: '1px solid rgba(43, 42, 37, 0.08)' }}>
+            <span className="text-[10px] text-ink-soft font-black uppercase tracking-wider mb-2 block">Project Scope Overview</span>
             <div className="grid grid-cols-3 gap-2 h-full items-center">
               {/* Total Capacity */}
-              <div className="border-r border-neutral-900 pr-2">
-                <span className="text-[9px] text-neutral-600 font-bold uppercase tracking-wider block">Total Capacity</span>
+              <div className="border-r border-line pr-2">
+                <span className="text-[9px] text-ink-soft font-bold uppercase tracking-wider block">Total Capacity</span>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span id="stat-total-capacity" className="text-xl md:text-2xl font-bold text-amber-400 font-mono">
+                  <span id="stat-total-capacity" className="text-xl md:text-2xl font-bold text-gold font-mono">
                     {totalCapacity.toLocaleString()}
                   </span>
-                  <span className="text-[10px] font-bold text-neutral-500">BU</span>
+                  <span className="text-[10px] font-bold text-ink-soft">BU</span>
                 </div>
               </div>
               {/* Grain Bins */}
-              <div className="border-r border-neutral-900 px-2">
-                <span className="text-[9px] text-neutral-600 font-bold uppercase tracking-wider block">Grain Bins</span>
+              <div className="border-r border-line px-2">
+                <span className="text-[9px] text-ink-soft font-bold uppercase tracking-wider block">Grain Bins</span>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span id="stat-total-bins" className="text-xl md:text-2xl font-bold text-white font-mono">
+                  <span id="stat-total-bins" className="text-xl md:text-2xl font-bold text-ink font-mono">
                     {totalBins}
                   </span>
-                  <span className="text-[10px] font-bold text-neutral-500">{totalBins === 1 ? 'Bin' : 'Bins'}</span>
+                  <span className="text-[10px] font-bold text-ink-soft">{totalBins === 1 ? 'Bin' : 'Bins'}</span>
                 </div>
               </div>
               {/* Yards Planned */}
               <div className="pl-2">
-                <span className="text-[9px] text-neutral-600 font-bold uppercase tracking-wider block">Yards Planned</span>
+                <span className="text-[9px] text-ink-soft font-bold uppercase tracking-wider block">Yards Planned</span>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span id="stat-total-yards" className="text-xl md:text-2xl font-bold text-white font-mono">
+                  <span id="stat-total-yards" className="text-xl md:text-2xl font-bold text-ink font-mono">
                     {totalYards}
                   </span>
-                  <span className="text-[10px] font-bold text-neutral-500">{totalYards === 1 ? 'Yard' : 'Yards'}</span>
+                  <span className="text-[10px] font-bold text-ink-soft">{totalYards === 1 ? 'Yard' : 'Yards'}</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Card 2: Placed Hardware Summary */}
-          <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between" style={{ background: '#0a0a0c', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-            <span className="text-[10px] text-neutral-500 font-black uppercase tracking-wider mb-2 block">Placed Hardware Summary</span>
+          <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between" style={{ background: '#FFFFFF', border: '1px solid rgba(43, 42, 37, 0.08)' }}>
+            <span className="text-[10px] text-ink-soft font-black uppercase tracking-wider mb-2 block">Placed Hardware Summary</span>
             <div className="grid grid-cols-3 gap-1 h-full items-center text-center">
               {/* Chester-X */}
-              <div className="border-r border-neutral-900 px-1">
-                <span className="text-[9px] text-neutral-600 font-bold uppercase tracking-wider block mb-1">Chester-X</span>
+              <div className="border-r border-line px-1">
+                <span className="text-[9px] text-ink-soft font-bold uppercase tracking-wider block mb-1">Chester-X</span>
                 <div className="flex flex-col items-center justify-center">
                   <span className="text-xl md:text-2xl font-bold text-red-500 font-mono">
                     {totalChesterX}
@@ -529,8 +529,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
               {/* Chester-X1 */}
-              <div className="border-r border-neutral-900 px-1">
-                <span className="text-[9px] text-neutral-600 font-bold uppercase tracking-wider block mb-1">Chester-X1</span>
+              <div className="border-r border-line px-1">
+                <span className="text-[9px] text-ink-soft font-bold uppercase tracking-wider block mb-1">Chester-X1</span>
                 <div className="flex flex-col items-center justify-center">
                   <span className="text-xl md:text-2xl font-bold text-blue-500 font-mono">
                     {totalChesterX1}
@@ -540,7 +540,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
               {/* Junction Boxes */}
               <div className="px-1">
-                <span className="text-[9px] text-neutral-600 font-bold uppercase tracking-wider block mb-1">Junction Box</span>
+                <span className="text-[9px] text-ink-soft font-bold uppercase tracking-wider block mb-1">Junction Box</span>
                 <div className="flex flex-col items-center justify-center">
                   <span className="text-xl md:text-2xl font-bold text-emerald-400 font-mono">
                     {totalJunctionBoxes}
@@ -553,35 +553,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Cable Arrangement Reference Diagram */}
-        <div className="glass-panel rounded-2xl overflow-hidden border border-neutral-900 bg-neutral-950">
-          <div className="px-5 pt-5 pb-3 border-b border-neutral-900">
-            <h3 className="text-xs font-black uppercase tracking-widest text-white">Recommended Cable Arrangement</h3>
+        <div className="glass-panel rounded-2xl overflow-hidden border border-line bg-surface">
+          <div className="px-5 pt-5 pb-3 border-b border-line">
+            <h3 className="text-xs font-black uppercase tracking-widest text-ink">Recommended Cable Arrangement</h3>
           </div>
 
           <div className="overflow-x-auto">
-            <div className="min-w-[500px] grid grid-cols-[130px_1fr_1fr_1fr_1fr] text-center text-xs divide-x divide-neutral-900 border-b border-neutral-900">
+            <div className="min-w-[500px] grid grid-cols-[130px_1fr_1fr_1fr_1fr] text-center text-xs divide-x divide-line border-b border-line">
               {/* Header Row */}
-              <div className="bg-neutral-900/60 p-3 flex items-center justify-center">
-                <span className="text-[10px] font-black uppercase text-neutral-400 tracking-wider">Bin Diameter</span>
+              <div className="bg-surface/60 p-3 flex items-center justify-center">
+                <span className="text-[10px] font-black uppercase text-ink-soft tracking-wider">Bin Diameter</span>
               </div>
-              <div className="bg-neutral-900/40 p-3 flex items-center justify-center">
-                <span className="text-[11px] font-black text-white">Less than 24 ft</span>
+              <div className="bg-surface/40 p-3 flex items-center justify-center">
+                <span className="text-[11px] font-black text-ink">Less than 24 ft</span>
               </div>
-              <div className="bg-neutral-900/40 p-3 flex items-center justify-center">
-                <span className="text-[11px] font-black text-white">24 ft to 35 ft</span>
+              <div className="bg-surface/40 p-3 flex items-center justify-center">
+                <span className="text-[11px] font-black text-ink">24 ft to 35 ft</span>
               </div>
-              <div className="bg-neutral-900/40 p-3 flex items-center justify-center">
-                <span className="text-[11px] font-black text-white">36 ft to 41 ft</span>
+              <div className="bg-surface/40 p-3 flex items-center justify-center">
+                <span className="text-[11px] font-black text-ink">36 ft to 41 ft</span>
               </div>
-              <div className="bg-neutral-900/40 p-3 flex items-center justify-center">
-                <span className="text-[11px] font-black text-white">42 ft to 47 ft+</span>
+              <div className="bg-surface/40 p-3 flex items-center justify-center">
+                <span className="text-[11px] font-black text-ink">42 ft to 47 ft+</span>
               </div>
             </div>
 
-            <div className="min-w-[500px] grid grid-cols-[130px_1fr_1fr_1fr_1fr] text-center text-xs divide-x divide-neutral-900 divide-y-0 bg-neutral-950/10">
+            <div className="min-w-[500px] grid grid-cols-[130px_1fr_1fr_1fr_1fr] text-center text-xs divide-x divide-line divide-y-0 bg-surface/10">
               {/* Diagram Row */}
-              <div className="p-4 flex items-center justify-center border-b border-neutral-900 bg-neutral-900/20">
-                <span className="text-[10px] font-black text-neutral-400 uppercase leading-snug tracking-wide text-center">
+              <div className="p-4 flex items-center justify-center border-b border-line bg-surface/20">
+                <span className="text-[10px] font-black text-ink-soft uppercase leading-snug tracking-wide text-center">
                   Cable Position
                   <br />
                   Arrangement
@@ -589,86 +589,86 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* Less than 24 ft */}
-              <div className="p-4 flex items-center justify-center border-b border-neutral-900">
+              <div className="p-4 flex items-center justify-center border-b border-line">
                 <svg viewBox="0 0 100 100" width="70" height="70">
                   <defs>
                     <radialGradient id="binGrad1" cx="45%" cy="38%" r="60%">
-                      <stop offset="0%" stopColor="#3a3020" />
-                      <stop offset="100%" stopColor="#111108" />
+                      <stop offset="0%" stopColor="#F3E6D1" />
+                      <stop offset="100%" stopColor="#FFFFFF" />
                     </radialGradient>
                   </defs>
-                  <circle cx="50" cy="50" r="44" fill="url(#binGrad1)" stroke="#fbbf24" strokeWidth="2.5" />
-                  <circle cx="50" cy="50" r="6" fill="#fbbf24" />
+                  <circle cx="50" cy="50" r="44" fill="url(#binGrad1)" stroke="#B8842E" strokeWidth="2.5" />
+                  <circle cx="50" cy="50" r="6" fill="#B8842E" />
                 </svg>
               </div>
 
               {/* 24-35 ft */}
-              <div className="p-4 flex items-center justify-center border-b border-neutral-900">
+              <div className="p-4 flex items-center justify-center border-b border-line">
                 <svg viewBox="0 0 100 100" width="70" height="70">
                   <defs>
                     <radialGradient id="binGrad2" cx="45%" cy="38%" r="60%">
-                      <stop offset="0%" stopColor="#3a3020" />
-                      <stop offset="100%" stopColor="#111108" />
+                      <stop offset="0%" stopColor="#F3E6D1" />
+                      <stop offset="100%" stopColor="#FFFFFF" />
                     </radialGradient>
                   </defs>
-                  <circle cx="50" cy="50" r="44" fill="url(#binGrad2)" stroke="#fbbf24" strokeWidth="2.5" />
-                  <line x1="50" y1="50" x2="50" y2="24" stroke="#fbbf24" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" />
-                  <line x1="50" y1="50" x2="72.5" y2="63" stroke="#fbbf24" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" />
-                  <line x1="50" y1="50" x2="27.5" y2="63" stroke="#fbbf24" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" />
-                  <circle cx="50" cy="24" r="5.5" fill="#fbbf24" />
-                  <circle cx="72.5" cy="63" r="5.5" fill="#fbbf24" />
-                  <circle cx="27.5" cy="63" r="5.5" fill="#fbbf24" />
+                  <circle cx="50" cy="50" r="44" fill="url(#binGrad2)" stroke="#B8842E" strokeWidth="2.5" />
+                  <line x1="50" y1="50" x2="50" y2="24" stroke="#B8842E" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" />
+                  <line x1="50" y1="50" x2="72.5" y2="63" stroke="#B8842E" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" />
+                  <line x1="50" y1="50" x2="27.5" y2="63" stroke="#B8842E" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" />
+                  <circle cx="50" cy="24" r="5.5" fill="#B8842E" />
+                  <circle cx="72.5" cy="63" r="5.5" fill="#B8842E" />
+                  <circle cx="27.5" cy="63" r="5.5" fill="#B8842E" />
                 </svg>
               </div>
 
               {/* 36-41 ft */}
-              <div className="p-4 flex items-center justify-center border-b border-neutral-900">
+              <div className="p-4 flex items-center justify-center border-b border-line">
                 <svg viewBox="0 0 100 100" width="70" height="70">
                   <defs>
                     <radialGradient id="binGrad3" cx="45%" cy="38%" r="60%">
-                      <stop offset="0%" stopColor="#3a3020" />
-                      <stop offset="100%" stopColor="#111108" />
+                      <stop offset="0%" stopColor="#F3E6D1" />
+                      <stop offset="100%" stopColor="#FFFFFF" />
                     </radialGradient>
                   </defs>
-                  <circle cx="50" cy="50" r="44" fill="url(#binGrad3)" stroke="#fbbf24" strokeWidth="2.5" />
-                  <line x1="50" y1="50" x2="50" y2="24" stroke="#fbbf24" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" />
-                  <line x1="50" y1="50" x2="72.5" y2="63" stroke="#fbbf24" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" />
-                  <line x1="50" y1="50" x2="27.5" y2="63" stroke="#fbbf24" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" />
-                  <circle cx="50" cy="50" r="6" fill="#fbbf24" />
-                  <circle cx="50" cy="24" r="5.5" fill="#fbbf24" />
-                  <circle cx="72.5" cy="63" r="5.5" fill="#fbbf24" />
-                  <circle cx="27.5" cy="63" r="5.5" fill="#fbbf24" />
+                  <circle cx="50" cy="50" r="44" fill="url(#binGrad3)" stroke="#B8842E" strokeWidth="2.5" />
+                  <line x1="50" y1="50" x2="50" y2="24" stroke="#B8842E" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" />
+                  <line x1="50" y1="50" x2="72.5" y2="63" stroke="#B8842E" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" />
+                  <line x1="50" y1="50" x2="27.5" y2="63" stroke="#B8842E" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" />
+                  <circle cx="50" cy="50" r="6" fill="#B8842E" />
+                  <circle cx="50" cy="24" r="5.5" fill="#B8842E" />
+                  <circle cx="72.5" cy="63" r="5.5" fill="#B8842E" />
+                  <circle cx="27.5" cy="63" r="5.5" fill="#B8842E" />
                 </svg>
               </div>
 
               {/* 42-47 ft+ */}
-              <div className="p-4 flex items-center justify-center border-b border-neutral-900">
+              <div className="p-4 flex items-center justify-center border-b border-line">
                 <svg viewBox="0 0 100 100" width="70" height="70">
                   <defs>
                     <radialGradient id="binGrad4" cx="45%" cy="38%" r="60%">
-                      <stop offset="0%" stopColor="#3a3020" />
-                      <stop offset="100%" stopColor="#111108" />
+                      <stop offset="0%" stopColor="#F3E6D1" />
+                      <stop offset="100%" stopColor="#FFFFFF" />
                     </radialGradient>
                     <clipPath id="binClip4">
                       <circle cx="50" cy="50" r="43" />
                     </clipPath>
                   </defs>
-                  <circle cx="50" cy="50" r="44" fill="url(#binGrad4)" stroke="#fbbf24" strokeWidth="2.5" />
-                  <line x1="6" y1="50" x2="94" y2="50" stroke="#fbbf24" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" clipPath="url(#binClip4)" />
-                  <line x1="50" y1="6" x2="50" y2="94" stroke="#fbbf24" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" clipPath="url(#binClip4)" />
-                  <circle cx="50" cy="50" r="6" fill="#fbbf24" />
-                  <circle cx="50" cy="25" r="5.5" fill="#fbbf24" />
-                  <circle cx="75" cy="50" r="5.5" fill="#fbbf24" />
-                  <circle cx="50" cy="75" r="5.5" fill="#fbbf24" />
-                  <circle cx="25" cy="50" r="5.5" fill="#fbbf24" />
+                  <circle cx="50" cy="50" r="44" fill="url(#binGrad4)" stroke="#B8842E" strokeWidth="2.5" />
+                  <line x1="6" y1="50" x2="94" y2="50" stroke="#B8842E" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" clipPath="url(#binClip4)" />
+                  <line x1="50" y1="6" x2="50" y2="94" stroke="#B8842E" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.7" clipPath="url(#binClip4)" />
+                  <circle cx="50" cy="50" r="6" fill="#B8842E" />
+                  <circle cx="50" cy="25" r="5.5" fill="#B8842E" />
+                  <circle cx="75" cy="50" r="5.5" fill="#B8842E" />
+                  <circle cx="50" cy="75" r="5.5" fill="#B8842E" />
+                  <circle cx="25" cy="50" r="5.5" fill="#B8842E" />
                 </svg>
               </div>
             </div>
 
-            <div className="min-w-[500px] grid grid-cols-[130px_1fr_1fr_1fr_1fr] text-center text-xs divide-x divide-neutral-900">
+            <div className="min-w-[500px] grid grid-cols-[130px_1fr_1fr_1fr_1fr] text-center text-xs divide-x divide-line">
               {/* Cable Count Row */}
-              <div className="bg-neutral-900/20 p-3 flex items-center justify-center">
-                <span className="text-[10px] font-black text-neutral-400 uppercase leading-snug tracking-wide text-center">
+              <div className="bg-surface/20 p-3 flex items-center justify-center">
+                <span className="text-[10px] font-black text-ink-soft uppercase leading-snug tracking-wide text-center">
                   Recommended
                   <br />
                   Number of
@@ -677,38 +677,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
               </div>
               <div className="p-3 flex items-center justify-center">
-                <span className="text-[11px] font-black text-amber-400">1 Center</span>
+                <span className="text-[11px] font-black text-gold">1 Center</span>
               </div>
               <div className="p-3 flex items-center justify-center">
-                <span className="text-[11px] font-black text-amber-400">3 Radius</span>
+                <span className="text-[11px] font-black text-gold">3 Radius</span>
               </div>
               <div className="p-3 flex flex-col items-center justify-center gap-0.5">
-                <span className="text-[11px] font-black text-amber-400">1 Center</span>
-                <span className="text-[11px] font-black text-amber-400">3 Radius</span>
+                <span className="text-[11px] font-black text-gold">1 Center</span>
+                <span className="text-[11px] font-black text-gold">3 Radius</span>
               </div>
               <div className="p-3 flex flex-col items-center justify-center gap-0.5">
-                <span className="text-[11px] font-black text-amber-400">1 Center</span>
-                <span className="text-[11px] font-black text-amber-400">4 Radius</span>
+                <span className="text-[11px] font-black text-gold">1 Center</span>
+                <span className="text-[11px] font-black text-gold">4 Radius</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Assets Inventory Table */}
-        <div className="glass-panel rounded-2xl flex-1 min-h-[180px] flex flex-col border border-neutral-900 bg-neutral-950 overflow-hidden">
-          <div className="p-5 border-b border-neutral-900 flex justify-between items-center shrink-0">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-white">Asset List</h3>
+        <div className="glass-panel rounded-2xl flex-1 min-h-[180px] flex flex-col border border-line bg-surface overflow-hidden">
+          <div className="p-5 border-b border-line flex justify-between items-center shrink-0">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-ink">Asset List</h3>
             <button
               onClick={() => onSwitchTab('planner')}
-              className="px-3.5 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 text-[10px] font-bold uppercase rounded-lg border border-neutral-850 transition-colors"
+              className="px-3.5 py-1.5 bg-surface hover:bg-surface text-ink-soft text-[10px] font-bold uppercase rounded-lg border border-line transition-colors"
             >
               Draw Layout
             </button>
           </div>
           <div className="overflow-auto flex-1 custom-scrollbar">
             <table className="w-full text-left border-collapse text-xs">
-              <thead className="sticky top-0 bg-neutral-950/95 backdrop-blur-sm z-10">
-                <tr className="border-b border-neutral-900 text-[9px] font-black uppercase text-neutral-500 tracking-wider bg-neutral-950/20">
+              <thead className="sticky top-0 bg-surface/95 backdrop-blur-sm z-10">
+                <tr className="border-b border-line text-[9px] font-black uppercase text-ink-soft tracking-wider bg-surface/20">
                   <th className="p-4">Yard Location</th>
                   <th className="p-4">Asset Label</th>
                   <th className="p-4">Asset Type</th>
@@ -717,7 +717,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <th className="p-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody id="dashboard-table-body" className="divide-y divide-neutral-900/40">
+              <tbody id="dashboard-table-body" className="divide-y divide-line/40">
                 {project.yards.some((y) => y.bins.length > 0) ? (
                   (() => {
                     const allAssets = project.yards.flatMap((yard) =>
@@ -738,12 +738,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       return (a.bin.name || '').localeCompare(b.bin.name || '');
                     });
                     const getBadgeColor = (type: string) => {
-                      if (type === 'bin') return 'bg-amber-400/10 text-amber-400 border-amber-400/20';
+                      if (type === 'bin') return 'bg-gold/10 text-gold border-gold/20';
                       if (type === 'chester-x') return 'bg-red-500/10 text-red-500 border-red-500/20';
                       if (type === 'chester-x1') return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
                       if (type === 'junction-box') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
                       if (type === 'fan-control') return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
-                      return 'bg-neutral-800 text-neutral-400 border-neutral-700';
+                      return 'bg-surface text-ink-soft border-line';
                     };
                     const getBadgeLabel = (type: string) => {
                       if (type === 'bin') return 'Bin Unit';
@@ -780,18 +780,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       }
 
                       return (
-                        <tr key={bin.id} className="hover:bg-neutral-900/20 transition-colors border-b border-neutral-900/30">
-                          <td className="p-4 font-bold text-neutral-400 text-xs">{yard.name}</td>
-                          <td className="p-4 font-bold text-white">{bin.name || 'Unnamed Asset'}</td>
+                        <tr key={bin.id} className="hover:bg-surface/20 transition-colors border-b border-line/30">
+                          <td className="p-4 font-bold text-ink-soft text-xs">{yard.name}</td>
+                          <td className="p-4 font-bold text-ink">{bin.name || 'Unnamed Asset'}</td>
                           <td className="p-4">{typeBadge}</td>
-                          <td className="p-4 text-neutral-400 font-semibold">{dimensionsStr}</td>
+                          <td className="p-4 text-ink-soft font-semibold">{dimensionsStr}</td>
                           <td className="p-4 font-mono">{capacityStr}</td>
                           <td className="p-4 text-right">
                             <button
                               onClick={() => onLocateAsset(bin.id)}
-                              className="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800 text-[10px] font-black uppercase rounded transition-colors flex items-center gap-1.5 ml-auto"
+                              className="px-3 py-1.5 bg-surface hover:bg-surface text-ink-soft border border-line text-[10px] font-black uppercase rounded transition-colors flex items-center gap-1.5 ml-auto"
                             >
-                              <MapPin size={12} className="text-amber-400" />
+                              <MapPin size={12} className="text-gold" />
                               Locate
                             </button>
                           </td>
@@ -801,7 +801,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   })()
                 ) : (
                   <tr>
-                    <td colSpan={6} className="p-12 text-center text-neutral-500 uppercase text-xs font-bold tracking-widest">
+                    <td colSpan={6} className="p-12 text-center text-ink-soft uppercase text-xs font-bold tracking-widest">
                       No assets placed in any yard. Add units in the Site Planner.
                     </td>
                   </tr>
@@ -815,7 +815,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Right Side: Yards Manager Panel + Project File Controls */}
       <div className="flex-1 max-w-sm flex flex-col gap-4 overflow-hidden shrink-0">
         {/* Save / Load Project File Actions (Compact) */}
-        <div className="bg-neutral-950 rounded-2xl border border-neutral-900 p-3 flex flex-col gap-2 shrink-0">
+        <div className="bg-surface rounded-2xl border border-line p-3 flex flex-col gap-2 shrink-0">
           {accessToken && (
             <div className="flex items-center justify-between">
               <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
@@ -824,7 +824,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </span>
               <button
                 onClick={handleDisconnectDrive}
-                className="text-[9px] font-bold text-neutral-500 hover:text-red-400 uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer"
+                className="text-[9px] font-bold text-ink-soft hover:text-red-400 uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer"
                 title="Sign out of Google Drive"
               >
                 <LogOut size={10} />
@@ -854,14 +854,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               disabled={isSavingDrive}
               className={`py-2 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 border cursor-pointer transition-all ${
                 isSavingDrive
-                  ? 'bg-neutral-900 border-neutral-800 text-neutral-500 pointer-events-none'
-                  : 'bg-amber-400 border-amber-500 hover:bg-amber-300 text-black shadow-sm'
+                  ? 'bg-surface border-line text-ink-soft pointer-events-none'
+                  : 'bg-gold border-gold hover:bg-gold text-ink shadow-sm'
               }`}
               title="Back up design to Google Drive"
             >
               {isSavingDrive ? (
                 <>
-                  <RefreshCw size={11} className="animate-spin text-neutral-500" />
+                  <RefreshCw size={11} className="animate-spin text-ink-soft" />
                   <span>Saving...</span>
                 </>
               ) : (
@@ -875,23 +875,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* 2. Export JSON file */}
             <button
               onClick={handleSaveProject}
-              className="py-2 px-2 bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-800 text-[10px] font-bold uppercase rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              className="py-2 px-2 bg-surface hover:bg-surface text-ink border border-line text-[10px] font-bold uppercase rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               title="Export design as a local JSON file"
             >
-              <Save size={12} className="text-amber-400" />
+              <Save size={12} className="text-gold" />
               <span>Export JSON</span>
             </button>
           </div>
         </div>
 
         {/* Project Notes Container */}
-        <div className="bg-neutral-950 rounded-2xl border border-neutral-900 p-3.5 flex flex-col gap-2 shrink-0">
+        <div className="bg-surface rounded-2xl border border-line p-3.5 flex flex-col gap-2 shrink-0">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
-              <FileText size={13} className="text-amber-400" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-ink flex items-center gap-1.5">
+              <FileText size={13} className="text-gold" />
               Project Notes
             </h3>
-            <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">Exported to PDF</span>
+            <span className="text-[9px] text-ink-soft uppercase font-bold tracking-wider">Exported to PDF</span>
           </div>
           <textarea
             value={project.notes || ''}
@@ -904,17 +904,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             }}
             placeholder="Type notes about the project here (e.g. site access instructions, installer notes, bin specs)..."
             rows={3}
-            className="w-full bg-neutral-900/80 border border-neutral-850 focus:border-amber-400/50 rounded-xl p-2.5 text-xs text-neutral-200 placeholder-neutral-600 focus:outline-none transition-colors resize-y custom-scrollbar"
+            className="w-full bg-surface/80 border border-line focus:border-gold/50 rounded-xl p-2.5 text-xs text-ink-soft placeholder-ink-soft focus:outline-none transition-colors resize-y custom-scrollbar"
           />
         </div>
 
         {/* Yards Manager */}
-        <div className="bg-neutral-950 rounded-2xl border border-neutral-900 p-5 flex flex-col flex-grow overflow-hidden">
+        <div className="bg-surface rounded-2xl border border-line p-5 flex flex-col flex-grow overflow-hidden">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-white">Yards Manager</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-ink">Yards Manager</h3>
             <button
               onClick={handleCreateYard}
-              className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-black text-[10px] font-black uppercase rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 bg-gold hover:bg-gold text-ink text-[10px] font-black uppercase rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
             >
               <Plus size={12} strokeWidth={3} />
               Add Yard
@@ -937,32 +937,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   }}
                   className={`p-4 rounded-xl border transition-all cursor-pointer select-none ${
                     isActive
-                      ? 'bg-amber-400/5 border-amber-400/30'
-                      : 'bg-neutral-900 border-neutral-850 hover:bg-neutral-800'
+                      ? 'bg-gold/5 border-gold/30'
+                      : 'bg-surface border-line hover:bg-surface'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={`font-bold text-sm ${isActive ? 'text-amber-400' : 'text-white'}`}>
+                    <span className={`font-bold text-sm ${isActive ? 'text-gold' : 'text-ink'}`}>
                       {yard.name}
                     </span>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={(e) => handleEditLocation(yard.id, e)}
-                        className="p-1 hover:text-white text-neutral-500 transition-colors"
+                        className="p-1 hover:text-ink text-ink-soft transition-colors"
                         title="Edit Yard Location"
                       >
                         <MapPin size={12} />
                       </button>
                       <button
                         onClick={(e) => handleRenameYard(yard.id, e)}
-                        className="p-1 hover:text-white text-neutral-500 transition-colors"
+                        className="p-1 hover:text-ink text-ink-soft transition-colors"
                         title="Rename Yard"
                       >
                         <Edit2 size={12} />
                       </button>
                       <button
                         onClick={(e) => handleDeleteYard(yard.id, e)}
-                        className="p-1 hover:text-red-400 text-neutral-500 transition-colors"
+                        className="p-1 hover:text-red-400 text-ink-soft transition-colors"
                         title="Delete Yard"
                       >
                         <Trash2 size={12} />
@@ -970,8 +970,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
                   </div>
                   {yard.location ? (
-                    <div className="text-[11px] text-amber-400/85 mt-1 flex items-center gap-1.5 font-medium leading-none">
-                      <MapPin size={10} className="shrink-0 text-amber-400" />
+                    <div className="text-[11px] text-gold/85 mt-1 flex items-center gap-1.5 font-medium leading-none">
+                      <MapPin size={10} className="shrink-0 text-gold" />
                       <span className="truncate">{yard.location}</span>
                     </div>
                   ) : (
@@ -980,17 +980,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         e.stopPropagation();
                         handleEditLocation(yard.id, e);
                       }}
-                      className="text-[10px] text-neutral-600 hover:text-neutral-400 italic mt-1 flex items-center gap-1 cursor-pointer select-none"
+                      className="text-[10px] text-ink-soft hover:text-ink-soft italic mt-1 flex items-center gap-1 cursor-pointer select-none"
                     >
-                      <MapPin size={10} className="shrink-0 text-neutral-700" />
+                      <MapPin size={10} className="shrink-0 text-ink" />
                       <span>Add Location info...</span>
                     </div>
                   )}
-                  <div className="text-[10px] text-neutral-500 font-bold uppercase mt-2.5 flex justify-between border-t border-neutral-900/40 pt-1.5">
+                  <div className="text-[10px] text-ink-soft font-bold uppercase mt-2.5 flex justify-between border-t border-line/40 pt-1.5">
                     <span>{totalBinsInYard} Bins</span>
                     <span>{totalAssetsInYard} Assets Total</span>
                   </div>
-                  <p className="text-[9px] text-neutral-600 mt-1.5 font-bold">Double-click to open in planner</p>
+                  <p className="text-[9px] text-ink-soft mt-1.5 font-bold">Double-click to open in planner</p>
                 </div>
               );
             })}

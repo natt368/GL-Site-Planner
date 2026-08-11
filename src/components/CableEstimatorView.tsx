@@ -669,7 +669,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
   return (
     <div id="view-estimator" className="flex-1 flex flex-col lg:flex-row h-full w-full overflow-hidden select-none">
       {/* Estimator Sidebar */}
-      <aside className="w-full lg:w-80 bg-ink border-r border-surface flex flex-col shrink-0">
+      <aside className="w-full lg:w-80 bg-ink border-r border-line flex flex-col shrink-0">
         <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-ink custom-scrollbar flex flex-col">
           <div className="flex items-center justify-between bg-paper border border-line rounded-lg px-2.5 py-1.5 shadow-sm">
             <span className="text-[9px] font-black text-ink-soft uppercase tracking-wider">Measuring Bin</span>
@@ -729,11 +729,11 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
             </div>
 
             {/* Hopper Bottom Toggle & Cone Height */}
-            <div className="pt-2 border-t border-surface space-y-2">
+            <div className="pt-2 border-t border-line space-y-2">
               <label className="block text-[8px] text-ink-soft font-bold uppercase tracking-wider">
                 Bin Bottom Mode
               </label>
-              <div className="flex gap-1 p-1 bg-surface border border-surface rounded-lg">
+              <div className="flex gap-1 p-1 bg-surface border border-line rounded-lg">
                 <button
                   type="button"
                   onClick={() => handleUpdateDimension('isHopper', false as any)}
@@ -948,9 +948,9 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
       {/* Estimator Workspace Canvas */}
       <div className="flex-grow flex flex-col bg-paper relative h-full">
         {/* SVG Blueprint Tools Header */}
-        <div className="h-16 flex flex-wrap items-center justify-between px-6 border-b border-surface bg-surface shrink-0 gap-4">
+        <div className="h-16 flex flex-wrap items-center justify-between px-6 border-b border-line bg-surface shrink-0 gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-lg border border-surface h-9">
+            <div className="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-lg border border-line h-9">
               <input
                 type="checkbox"
                 id="measureToggle"
@@ -960,7 +960,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
               />
               <span className="text-[9px] text-ink-soft font-bold uppercase whitespace-nowrap">Measure Tool</span>
             </div>
-            <div className="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-lg border border-surface h-9">
+            <div className="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-lg border border-line h-9">
               <input
                 type="checkbox"
                 id="snapToggle"
@@ -970,7 +970,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
               />
               <span className="text-[9px] text-ink-soft font-bold uppercase whitespace-nowrap">Snap to Grid</span>
             </div>
-            <div className="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-lg border border-surface h-9">
+            <div className="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-lg border border-line h-9">
               <input
                 type="checkbox"
                 id="featureSnapToggle"
@@ -982,7 +982,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
             </div>
             <button
               onClick={() => onSwitchTab('planner')}
-              className="bg-surface hover:bg-surface text-gold border border-surface rounded-lg px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 cursor-pointer h-9"
+              className="bg-surface hover:bg-surface text-gold border border-line rounded-lg px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 cursor-pointer h-9"
             >
               <ArrowLeft size={14} />
               Back to 2D Map Layout
@@ -992,13 +992,13 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
           <div className="flex items-center gap-2">
             <button
               onClick={resetViewport}
-              className="bg-surface hover:bg-surface text-ink text-[10px] font-bold px-4 py-2 rounded-lg border border-surface transition-colors h-9 uppercase cursor-pointer"
+              className="bg-surface hover:bg-surface text-ink text-[10px] font-bold px-4 py-2 rounded-lg border border-line transition-colors h-9 uppercase cursor-pointer"
             >
               Reset View
             </button>
             <button
               onClick={clearMeasurements}
-              className="bg-surface hover:bg-surface text-ink-soft text-[10px] font-bold px-4 py-2 rounded-lg border border-surface transition-colors h-9 uppercase cursor-pointer"
+              className="bg-surface hover:bg-surface text-ink-soft text-[10px] font-bold px-4 py-2 rounded-lg border border-line transition-colors h-9 uppercase cursor-pointer"
             >
               Clear Measurements
             </button>

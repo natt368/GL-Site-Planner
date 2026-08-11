@@ -1769,7 +1769,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   return (
     <div id="view-planner" className="flex-1 flex h-full w-full overflow-hidden">
       {/* Planner Sidebar */}
-      <aside className="w-52 bg-surface border-r border-surface flex flex-col z-10 shrink-0">
+      <aside className="w-52 bg-surface border-r border-line flex flex-col z-10 shrink-0">
         <div className="flex-grow overflow-y-auto p-3.5 space-y-4 bg-surface custom-scrollbar">
           {/* Planner Tools Section */}
           <section>
@@ -1782,7 +1782,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                 className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border transition-all text-xs font-bold cursor-pointer ${
                   selectionMode === 'select'
                     ? 'border-gold bg-gold/20 text-gold'
-                    : 'border-surface bg-surface hover:border-gold/50 hover:bg-gold/5 text-ink-soft'
+                    : 'border-line bg-surface hover:border-gold/50 hover:bg-gold/5 text-ink-soft'
                 }`}
                 title="Select and Drag assets. Shift+Click or drag box to select multiple."
               >
@@ -1794,7 +1794,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                 className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border transition-all text-xs font-bold cursor-pointer ${
                   selectionMode === 'pan'
                     ? 'border-gold bg-gold/20 text-gold'
-                    : 'border-surface bg-surface hover:border-gold/50 hover:bg-gold/5 text-ink-soft'
+                    : 'border-line bg-surface hover:border-gold/50 hover:bg-gold/5 text-ink-soft'
                 }`}
                 title="Pan Canvas. Click and drag background to pan."
               >
@@ -1840,7 +1840,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
             </div>
 
             {selectedAssetIds.length > 1 && (
-              <div className="mt-2.5 p-2 bg-surface border border-surface rounded-lg space-y-2">
+              <div className="mt-2.5 p-2 bg-surface border border-line rounded-lg space-y-2">
                 <div className="text-[10px] text-ink-soft font-bold flex justify-between items-center">
                   <span>{selectedAssetIds.length} Assets Selected</span>
                   <button
@@ -1881,7 +1881,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
               <div className="flex flex-col gap-1.5 w-full">
                 <button
                   onClick={() => handleAddSpecialMarker('chester-x')}
-                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-surface bg-surface hover:border-red-500/50 hover:bg-red-500/5 text-red-500 text-xs font-bold transition-all cursor-pointer text-left"
+                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-line bg-surface hover:border-red-500/50 hover:bg-red-500/5 text-red-500 text-xs font-bold transition-all cursor-pointer text-left"
                   title="Quick Add Chester-X"
                 >
                   <span className="font-black text-sm w-4 text-center shrink-0">X</span>
@@ -1889,7 +1889,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                 </button>
                 <button
                   onClick={() => handleAddSpecialMarker('chester-x1')}
-                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-surface bg-surface hover:border-blue-500/50 hover:bg-blue-500/5 text-blue-400 text-xs font-bold transition-all cursor-pointer text-left"
+                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-line bg-surface hover:border-blue-500/50 hover:bg-blue-500/5 text-blue-400 text-xs font-bold transition-all cursor-pointer text-left"
                   title="Quick Add Chester-X1"
                 >
                   <span className="font-black text-sm w-4 text-center shrink-0">X1</span>
@@ -1897,7 +1897,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                 </button>
                 <button
                   onClick={handleAddZoneBox}
-                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-surface bg-surface hover:border-gold/50 hover:bg-gold/5 text-gold text-xs font-bold transition-all cursor-pointer text-left"
+                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-line bg-surface hover:border-gold/50 hover:bg-gold/5 text-gold text-xs font-bold transition-all cursor-pointer text-left"
                   title="Quick Add Zone Box"
                 >
                   <div className="w-4 flex justify-center shrink-0">
@@ -1917,7 +1917,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                 </button>
                 <button
                   onClick={() => handleAddSpecialMarker('junction-box')}
-                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-surface bg-surface hover:border-emerald-500/50 hover:bg-emerald-500/5 text-emerald-400 text-xs font-bold transition-all cursor-pointer text-left"
+                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-line bg-surface hover:border-emerald-500/50 hover:bg-emerald-500/5 text-emerald-400 text-xs font-bold transition-all cursor-pointer text-left"
                   title="Quick Add Junction Box"
                 >
                   <span className="font-black text-[11px] w-4 text-center shrink-0">JB</span>
@@ -1925,7 +1925,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                 </button>
                 <button
                   onClick={() => handleAddSpecialMarker('fan-control')}
-                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-surface bg-surface hover:border-purple-500/50 hover:bg-purple-500/5 text-purple-400 text-xs font-bold transition-all cursor-pointer text-left"
+                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-line bg-surface hover:border-purple-500/50 hover:bg-purple-500/5 text-purple-400 text-xs font-bold transition-all cursor-pointer text-left"
                   title="Quick Add Fan Control"
                 >
                   <span className="font-black text-[11px] w-4 text-center shrink-0">FC</span>
@@ -1943,7 +1943,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                   className={`flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border transition-all text-xs font-bold text-left cursor-pointer ${
                     wiringState?.active
                       ? 'border-purple-500 bg-purple-500/20 text-purple-400'
-                      : 'border-surface bg-surface hover:border-purple-500/50 hover:bg-purple-500/5 text-purple-400'
+                      : 'border-line bg-surface hover:border-purple-500/50 hover:bg-purple-500/5 text-purple-400'
                   }`}
                   title="String electrical/signal wire from one bin or marker to a junction box"
                 >
@@ -1991,7 +1991,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                   onFocus={() => setIsAddBinSuggestionsOpen(true)}
                   onBlur={() => setTimeout(() => setIsAddBinSuggestionsOpen(false), 200)}
                   placeholder="Type model"
-                  className="w-full bg-surface border border-surface text-gold font-bold text-xs p-2.5 pl-8 rounded-lg outline-none focus:border-gold placeholder-ink-soft shadow-sm"
+                  className="w-full bg-surface border border-line text-gold font-bold text-xs p-2.5 pl-8 rounded-lg outline-none focus:border-gold placeholder-ink-soft shadow-sm"
                 />
                 <Search className="w-3.5 h-3.5 text-ink-soft absolute left-2.5 pointer-events-none" />
                 {addBinSearchText && (
@@ -2011,7 +2011,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
               {/* Suggestions Popover for Add Bin */}
               {isAddBinSuggestionsOpen && addBinSearchText.trim().length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-gold/40 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-surface p-1">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-gold/40 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-line p-1">
                   {addBinSuggestions.length > 0 ? (
                     addBinSuggestions.map((m) => (
                       <button
@@ -2052,7 +2052,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                 <button
                   key={size}
                   onClick={() => handleAddBin(size)}
-                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-surface bg-surface hover:border-gold/50 hover:bg-gold/5 text-gold transition-all cursor-pointer group text-left text-xs font-bold"
+                  className="flex items-center gap-2.5 w-full py-1.5 px-2.5 rounded-lg border border-line bg-surface hover:border-gold/50 hover:bg-gold/5 text-gold transition-all cursor-pointer group text-left text-xs font-bold"
                   title={`Add ${size}' Grain Bin`}
                 >
                   <div className="rounded-full border border-gold/40 group-hover:border-gold transition-colors w-3 h-3 border-2 shrink-0"></div>
@@ -2119,7 +2119,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
                       {/* Suggestions Popover for Bin Property */}
                       {isPropModelSuggestionsOpen && propModelSearchText.trim().length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-gold/50 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-surface p-1">
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-gold/50 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-line p-1">
                           {propModelSuggestions.length > 0 ? (
                             propModelSuggestions.map((m) => (
                               <button
@@ -2401,7 +2401,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
           }
           return (
             <div
-              className="absolute z-50 pointer-events-none bg-surface/95 backdrop-blur-md border border-surface rounded-xl p-3 shadow-2xl text-ink text-xs w-64 select-none animate-fade-in"
+              className="absolute z-50 pointer-events-none bg-surface/95 backdrop-blur-md border border-line rounded-xl p-3 shadow-2xl text-ink text-xs w-64 select-none animate-fade-in"
               style={{
                 left: posX,
                 top: posY,
@@ -2409,14 +2409,14 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
             >
               {hoveredBin.type === 'bin' && (
                 <>
-                  <div className="flex items-center justify-between border-b border-surface pb-1.5 mb-2">
+                  <div className="flex items-center justify-between border-b border-line pb-1.5 mb-2">
                     <span className="font-extrabold tracking-wide text-gold text-sm">{hoveredBin.name || 'Unnamed Bin'}</span>
                     <span className="text-[10px] bg-surface text-ink-soft px-2 py-0.5 rounded font-mono uppercase tracking-wider">Grain Bin</span>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
                     {hoveredBin.modelNumber && (
-                      <div className="flex items-center justify-between col-span-2 border-b border-surface pb-1 mb-1 text-gold font-bold">
+                      <div className="flex items-center justify-between col-span-2 border-b border-line pb-1 mb-1 text-gold font-bold">
                         <span className="text-ink-soft font-semibold">Model #:</span>
                         <span className="truncate ml-1">{hoveredBin.manufacturer ? `${hoveredBin.manufacturer} ` : ''}{hoveredBin.modelNumber}</span>
                       </div>
@@ -2437,7 +2437,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                       <span className="text-ink-soft font-semibold">Total Ht:</span>
                       <span className="font-mono text-ink-soft font-bold">{hoveredBin.totalHeight ? `${hoveredBin.totalHeight}'` : '-'}</span>
                     </div>
-                    <div className="flex items-center justify-between col-span-2 border-t border-surface pt-1 mt-1">
+                    <div className="flex items-center justify-between col-span-2 border-t border-line pt-1 mt-1">
                       <span className="text-ink-soft font-semibold">Center Cable:</span>
                       <span className="font-mono text-gold/90 font-bold">{hoveredBin.centerCable ? `${hoveredBin.centerCable}'` : '-'}</span>
                     </div>
@@ -2454,7 +2454,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                   </div>
 
                   {hoveredBin.notes && (
-                    <div className="mt-2 pt-1.5 border-t border-surface text-[10px] text-ink-soft italic break-words leading-relaxed">
+                    <div className="mt-2 pt-1.5 border-t border-line text-[10px] text-ink-soft italic break-words leading-relaxed">
                       {hoveredBin.notes}
                     </div>
                   )}
@@ -2463,7 +2463,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
               {hoveredBin.type === 'zone' && (
                 <>
-                  <div className="flex items-center justify-between border-b border-surface pb-1.5 mb-2">
+                  <div className="flex items-center justify-between border-b border-line pb-1.5 mb-2">
                     <span className="font-extrabold tracking-wide text-gold text-sm">{hoveredBin.name || 'Zone'}</span>
                     <span className="text-[10px] bg-surface text-ink-soft px-2 py-0.5 rounded font-mono uppercase tracking-wider">Zone</span>
                   </div>
@@ -2480,7 +2480,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                   </div>
 
                   {hoveredBin.notes && (
-                    <div className="mt-2 pt-1.5 border-t border-surface text-[10px] text-ink-soft italic break-words leading-relaxed">
+                    <div className="mt-2 pt-1.5 border-t border-line text-[10px] text-ink-soft italic break-words leading-relaxed">
                       {hoveredBin.notes}
                     </div>
                   )}
@@ -2489,7 +2489,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
               {hoveredBin.type !== 'bin' && hoveredBin.type !== 'zone' && (
                 <>
-                  <div className="flex items-center justify-between border-b border-surface pb-1.5 mb-2">
+                  <div className="flex items-center justify-between border-b border-line pb-1.5 mb-2">
                     <span className="font-extrabold tracking-wide text-gold text-sm">{hoveredBin.name || 'Marker'}</span>
                     <span className="text-[10px] bg-surface text-ink-soft px-2 py-0.5 rounded font-mono uppercase tracking-wider">
                       {hoveredBin.type === 'chester-x' ? 'Chester-X' : hoveredBin.type === 'chester-x1' ? 'Chester-X1' : hoveredBin.type === 'junction-box' ? 'J-Box' : hoveredBin.type === 'fan-control' ? 'Fan Ctrl' : 'Marker'}
@@ -2504,7 +2504,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                   </div>
 
                   {hoveredBin.notes && (
-                    <div className="mt-2 pt-1.5 border-t border-surface text-[10px] text-ink-soft italic break-words leading-relaxed">
+                    <div className="mt-2 pt-1.5 border-t border-line text-[10px] text-ink-soft italic break-words leading-relaxed">
                       {hoveredBin.notes}
                     </div>
                   )}
@@ -2516,7 +2516,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
         {/* Yard Indicator / Quick Switcher HUD */}
         <div className="absolute top-6 left-6 flex flex-wrap items-center gap-3">
-          <div className="bg-surface/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-surface shadow-xl flex items-center gap-3">
+          <div className="bg-surface/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-line shadow-xl flex items-center gap-3">
             <span className="w-2 h-2 rounded-full bg-gold animate-pulse"></span>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold text-ink-soft uppercase tracking-wider">Yard:</span>
@@ -2538,14 +2538,14 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
             </div>
           </div>
           {activeYard?.location && (
-            <div className="bg-surface/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-surface shadow-xl flex items-center gap-2 max-w-[200px] sm:max-w-[300px]">
+            <div className="bg-surface/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-line shadow-xl flex items-center gap-2 max-w-[200px] sm:max-w-[300px]">
               <MapPin size={12} className="text-gold shrink-0" />
               <span className="text-[10px] font-bold text-ink-soft truncate uppercase tracking-widest">
                 {activeYard.location}
               </span>
             </div>
           )}
-          <div className="bg-surface/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-surface shadow-xl flex items-center gap-2">
+          <div className="bg-surface/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-line shadow-xl flex items-center gap-2">
             <span id="scale-indicator" className="text-[10px] font-bold text-ink-soft uppercase tracking-widest">
               {Math.round(view.scale * 100)}% Scale
             </span>
@@ -2591,7 +2591,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
               </button>
             </div>
           ) : (
-            <div className="hidden sm:flex bg-surface/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-surface shadow-xl items-center gap-2">
+            <div className="hidden sm:flex bg-surface/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-line shadow-xl items-center gap-2">
               <span className="text-[10px] font-bold text-gold uppercase tracking-widest">
                 Click Bin to Design Cables
               </span>
@@ -2602,8 +2602,8 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
         {/* Create Wire Connection Label Overlay */}
         {wiringState?.active && wiringState.showLabelInput && wiringState.fromAssetId !== null && wiringState.toAssetId !== null && (
           <div className="absolute inset-0 bg-ink/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-surface border border-surface rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-fade-in text-ink">
-              <div className="flex items-center gap-2.5 mb-4 border-b border-surface pb-3">
+            <div className="bg-surface border border-line rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-fade-in text-ink">
+              <div className="flex items-center gap-2.5 mb-4 border-b border-line pb-3">
                 <span className="text-xl">⚡</span>
                 <div>
                   <h3 className="font-extrabold text-sm tracking-wide text-purple-400">Select Wire Connection Type</h3>
@@ -2634,7 +2634,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                   </div>
                 </button>
 
-                <div className="flex items-center justify-between text-[10px] text-ink-soft font-mono bg-surface/50 p-2 rounded-lg border border-surface">
+                <div className="flex items-center justify-between text-[10px] text-ink-soft font-mono bg-surface/50 p-2 rounded-lg border border-line">
                   <span>From: {activeYard.bins.find((b) => b.id === wiringState.fromAssetId)?.name || 'Unit A'}</span>
                   <span>To: {activeYard.bins.find((b) => b.id === wiringState.toAssetId)?.name || 'Unit B'}</span>
                 </div>
@@ -2642,7 +2642,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                 <div className="flex pt-2">
                   <button
                     onClick={() => setWiringState(null)}
-                    className="w-full bg-surface hover:bg-surface text-ink-soft border border-surface py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                    className="w-full bg-surface hover:bg-surface text-ink-soft border border-line py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
                   >
                     Cancel Connection
                   </button>
@@ -2655,7 +2655,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
         <div className="absolute bottom-6 left-6 flex flex-wrap items-center gap-3">
           <button
             onClick={resetView}
-            className="bg-surface hover:bg-surface text-ink-soft px-4 py-2.5 rounded-xl border border-surface transition-colors shadow-lg flex items-center gap-2 text-xs font-bold uppercase tracking-wider cursor-pointer"
+            className="bg-surface hover:bg-surface text-ink-soft px-4 py-2.5 rounded-xl border border-line transition-colors shadow-lg flex items-center gap-2 text-xs font-bold uppercase tracking-wider cursor-pointer"
           >
             Reset View
           </button>
@@ -2664,7 +2664,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
             className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider cursor-pointer shadow-lg ${
               snapToGrid
                 ? 'bg-gold/10 border-gold/30 text-gold hover:bg-gold/20'
-                : 'bg-surface border-surface text-ink-soft hover:bg-surface'
+                : 'bg-surface border-line text-ink-soft hover:bg-surface'
             }`}
             title="Toggle Snap to Grid Lines"
           >
@@ -2676,7 +2676,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
             className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider cursor-pointer shadow-lg ${
               snapToObject
                 ? 'bg-gold/10 border-gold/30 text-gold hover:bg-gold/20'
-                : 'bg-surface border-surface text-ink-soft hover:bg-surface'
+                : 'bg-surface border-line text-ink-soft hover:bg-surface'
             }`}
             title="Toggle Snap to Other Objects and Alignment Guidelines"
           >

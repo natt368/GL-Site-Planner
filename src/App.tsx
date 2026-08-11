@@ -1053,6 +1053,8 @@ export default function App() {
             <LayoutDashboard size={16} className={activeTab === 'dashboard' ? 'text-gold' : ''} />
             Project Dashboard
           </button>
+
+          <h2 className="text-[9px] font-bold uppercase tracking-[0.2em] text-ink-soft px-4 pt-4 pb-1">Tools</h2>
           <button
             onClick={() => navigateTo(false, 'planner')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left cursor-pointer ${
@@ -1062,7 +1064,7 @@ export default function App() {
             }`}
           >
             <MapIcon size={16} className={activeTab === 'planner' ? 'text-gold' : ''} />
-            2D Site Planner
+            Site Planner
           </button>
           <button
             onClick={() => navigateTo(false, 'estimator')}
@@ -1073,7 +1075,7 @@ export default function App() {
             }`}
           >
             <Compass size={16} className={activeTab === 'estimator' ? 'text-gold' : ''} />
-            Cable Measuring
+            Cable Lengths
           </button>
           <button
             onClick={() => navigateTo(false, 'binSpecs')}
@@ -1112,7 +1114,7 @@ export default function App() {
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider">
-                Unique Project ID
+                Project ID
               </label>
               <div className="flex items-center gap-1">
                 <button
@@ -1248,9 +1250,9 @@ export default function App() {
           <div className="flex items-center gap-3">
             <span className="font-extrabold uppercase tracking-widest text-ink-soft text-[11px]">
               {activeTab === 'dashboard' && 'Dashboard Overview'}
-              {activeTab === 'planner' && '2D Site Planner'}
-              {activeTab === 'estimator' && 'Cable Estimator'}
-              {activeTab === 'binSpecs' && 'Bin Specs Library'}
+              {activeTab === 'planner' && 'Site Planner'}
+              {activeTab === 'estimator' && 'Cable Lengths'}
+              {activeTab === 'binSpecs' && 'Bin Specs'}
             </span>
             <span className="text-ink">•</span>
             <span className="font-black text-ink uppercase tracking-tight text-xs">{project.name}</span>

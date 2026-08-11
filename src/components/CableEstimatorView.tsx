@@ -658,8 +658,8 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
 
   if (!activeBin) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-neutral-100">
-        <p className="text-neutral-500 font-bold uppercase tracking-wider text-sm">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-paper">
+        <p className="text-ink-soft font-bold uppercase tracking-wider text-sm">
           No active bin selected. Select a bin unit in 2D Planner.
         </p>
       </div>
@@ -669,11 +669,11 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
   return (
     <div id="view-estimator" className="flex-1 flex flex-col lg:flex-row h-full w-full overflow-hidden select-none">
       {/* Estimator Sidebar */}
-      <aside className="w-full lg:w-80 bg-black border-r border-neutral-900 flex flex-col shrink-0">
-        <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-black custom-scrollbar flex flex-col">
-          <div className="flex items-center justify-between bg-neutral-200 border border-neutral-300 rounded-lg px-2.5 py-1.5 shadow-sm">
-            <span className="text-[9px] font-black text-neutral-500 uppercase tracking-wider">Measuring Bin</span>
-            <span id="estimator-bin-label" className="text-xs text-neutral-900 font-black truncate max-w-[160px]">
+      <aside className="w-full lg:w-80 bg-ink border-r border-surface flex flex-col shrink-0">
+        <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-ink custom-scrollbar flex flex-col">
+          <div className="flex items-center justify-between bg-paper border border-line rounded-lg px-2.5 py-1.5 shadow-sm">
+            <span className="text-[9px] font-black text-ink-soft uppercase tracking-wider">Measuring Bin</span>
+            <span id="estimator-bin-label" className="text-xs text-ink font-black truncate max-w-[160px]">
               {activeBin.name || '—'}
             </span>
           </div>
@@ -681,66 +681,66 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
           <section className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[8px] text-neutral-400 font-bold uppercase tracking-wider mb-1">
+                <label className="block text-[8px] text-ink-soft font-bold uppercase tracking-wider mb-1">
                   Diameter (ft)
                 </label>
                 <input
                   type="number"
                   value={activeBin.diameter}
                   onChange={(e) => handleUpdateDimension('diameter', e.target.value)}
-                  className="w-full px-2 py-1 bg-neutral-200 border border-neutral-300 rounded-lg text-xs text-neutral-900 font-bold outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 shadow-sm"
+                  className="w-full px-2 py-1 bg-paper border border-line rounded-lg text-xs text-ink font-bold outline-none focus:border-gold focus:ring-1 focus:ring-gold shadow-sm"
                 />
               </div>
               <div>
-                <label className="block text-[8px] text-neutral-400 font-bold uppercase tracking-wider mb-1">
+                <label className="block text-[8px] text-ink-soft font-bold uppercase tracking-wider mb-1">
                   Floor Ht (ft)
                 </label>
                 <input
                   type="number"
                   value={activeBin.floorThick || '1.5'}
                   onChange={(e) => handleUpdateDimension('floorThick', e.target.value)}
-                  className="w-full px-2 py-1 bg-neutral-200 border border-neutral-300 rounded-lg text-xs text-neutral-900 font-bold outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 shadow-sm"
+                  className="w-full px-2 py-1 bg-paper border border-line rounded-lg text-xs text-ink font-bold outline-none focus:border-gold focus:ring-1 focus:ring-gold shadow-sm"
                 />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[8px] text-neutral-400 font-bold uppercase tracking-wider mb-1">
+                <label className="block text-[8px] text-ink-soft font-bold uppercase tracking-wider mb-1">
                   Eave Ht (ft)
                 </label>
                 <input
                   type="number"
                   value={activeBin.eaveHeight || '32'}
                   onChange={(e) => handleUpdateDimension('eaveHeight', e.target.value)}
-                  className="w-full px-2 py-1 bg-neutral-200 border border-neutral-300 rounded-lg text-xs text-neutral-900 font-bold outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 shadow-sm"
+                  className="w-full px-2 py-1 bg-paper border border-line rounded-lg text-xs text-ink font-bold outline-none focus:border-gold focus:ring-1 focus:ring-gold shadow-sm"
                 />
               </div>
               <div>
-                <label className="block text-[8px] text-neutral-400 font-bold uppercase tracking-wider mb-1">
+                <label className="block text-[8px] text-ink-soft font-bold uppercase tracking-wider mb-1">
                   Total Ht (ft)
                 </label>
                 <input
                   type="number"
                   value={activeBin.totalHeight || '42'}
                   onChange={(e) => handleUpdateDimension('totalHeight', e.target.value)}
-                  className="w-full px-2 py-1 bg-neutral-200 border border-neutral-300 rounded-lg text-xs text-neutral-900 font-bold outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 shadow-sm"
+                  className="w-full px-2 py-1 bg-paper border border-line rounded-lg text-xs text-ink font-bold outline-none focus:border-gold focus:ring-1 focus:ring-gold shadow-sm"
                 />
               </div>
             </div>
 
             {/* Hopper Bottom Toggle & Cone Height */}
-            <div className="pt-2 border-t border-neutral-800 space-y-2">
-              <label className="block text-[8px] text-neutral-400 font-bold uppercase tracking-wider">
+            <div className="pt-2 border-t border-surface space-y-2">
+              <label className="block text-[8px] text-ink-soft font-bold uppercase tracking-wider">
                 Bin Bottom Mode
               </label>
-              <div className="flex gap-1 p-1 bg-neutral-900 border border-neutral-800 rounded-lg">
+              <div className="flex gap-1 p-1 bg-surface border border-surface rounded-lg">
                 <button
                   type="button"
                   onClick={() => handleUpdateDimension('isHopper', false as any)}
                   className={`flex-1 py-1 px-2 text-[10px] font-bold rounded transition-all cursor-pointer ${
                     !activeBin.isHopper
-                      ? 'bg-amber-500 text-black shadow font-black'
-                      : 'text-neutral-400 hover:text-neutral-200'
+                      ? 'bg-gold text-ink shadow font-black'
+                      : 'text-ink-soft hover:text-ink-soft'
                   }`}
                 >
                   Flat Bottom
@@ -750,8 +750,8 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                   onClick={() => handleUpdateDimension('isHopper', true as any)}
                   className={`flex-1 py-1 px-2 text-[10px] font-bold rounded transition-all cursor-pointer ${
                     activeBin.isHopper
-                      ? 'bg-amber-500 text-black shadow font-black'
-                      : 'text-neutral-400 hover:text-neutral-200'
+                      ? 'bg-gold text-ink shadow font-black'
+                      : 'text-ink-soft hover:text-ink-soft'
                   }`}
                 >
                   Hopper Bottom
@@ -760,14 +760,14 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
 
               {activeBin.isHopper && (
                 <div className="pt-1">
-                  <label className="block text-[8px] text-amber-400 font-extrabold uppercase tracking-wider mb-1">
+                  <label className="block text-[8px] text-gold font-extrabold uppercase tracking-wider mb-1">
                     Hopper Cone Ht (ft)
                   </label>
                   <input
                     type="number"
                     value={activeBin.hopperConeHeight || '8'}
                     onChange={(e) => handleUpdateDimension('hopperConeHeight', e.target.value)}
-                    className="w-full px-2 py-1 bg-amber-50 border border-amber-500 rounded-lg text-xs text-amber-950 font-black outline-none focus:ring-1 focus:ring-amber-500 shadow-sm"
+                    className="w-full px-2 py-1 bg-gold-light border border-gold rounded-lg text-xs text-gold-dark font-black outline-none focus:ring-1 focus:ring-gold shadow-sm"
                     placeholder="e.g. 8"
                   />
                 </div>
@@ -775,38 +775,38 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
             </div>
           </section>
 
-          <section className="bg-neutral-200 p-2.5 rounded-xl border border-neutral-300 border-l-4 border-l-amber-500 shadow-sm space-y-2">
-            <p className="text-[9px] text-amber-800 uppercase font-black tracking-widest flex items-center justify-between">
+          <section className="bg-paper p-2.5 rounded-xl border border-line border-l-4 border-l-amber-500 shadow-sm space-y-2">
+            <p className="text-[9px] text-gold-dark uppercase font-black tracking-widest flex items-center justify-between">
               <span>Specs &amp; Cable Config</span>
-              <span className="text-[8px] font-mono text-neutral-500">Auto</span>
+              <span className="text-[8px] font-mono text-ink-soft">Auto</span>
             </p>
-            <div className="grid grid-cols-2 gap-2 text-[11px] font-bold text-neutral-700">
-              <div className="bg-neutral-300/60 px-2 py-1 rounded-lg border border-neutral-300/30 shadow-inner">
-                <span className="block text-[8px] text-neutral-600 font-black uppercase">Est. Capacity</span>
+            <div className="grid grid-cols-2 gap-2 text-[11px] font-bold text-ink">
+              <div className="bg-line/60 px-2 py-1 rounded-lg border border-line/30 shadow-inner">
+                <span className="block text-[8px] text-ink-soft font-black uppercase">Est. Capacity</span>
                 <div className="flex items-baseline gap-0.5">
-                  <span id="bushelCount" className="text-sm font-mono font-black text-amber-800">
+                  <span id="bushelCount" className="text-sm font-mono font-black text-gold-dark">
                     {bushels.toLocaleString()}
                   </span>
-                  <span className="text-[8px] font-black text-neutral-500">BU</span>
+                  <span className="text-[8px] font-black text-ink-soft">BU</span>
                 </div>
               </div>
-              <div className="bg-neutral-300/60 px-2 py-1 rounded-lg border border-neutral-300/30 shadow-inner">
-                <span className="block text-[8px] text-neutral-600 font-black uppercase">Total Cables</span>
-                <span id="totalCableCount" className="text-xs font-mono font-black text-neutral-900 block">
-                  {cables.center + cables.radius} <span className="text-[8px] text-neutral-500 font-black uppercase">Qty</span>
+              <div className="bg-line/60 px-2 py-1 rounded-lg border border-line/30 shadow-inner">
+                <span className="block text-[8px] text-ink-soft font-black uppercase">Total Cables</span>
+                <span id="totalCableCount" className="text-xs font-mono font-black text-ink block">
+                  {cables.center + cables.radius} <span className="text-[8px] text-ink-soft font-black uppercase">Qty</span>
                 </span>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-neutral-300/60 px-2 py-1 rounded-lg border border-neutral-300/30 shadow-inner">
-                <span className="block text-[8px] text-neutral-600 font-black uppercase">Center</span>
-                <span id="centerCableCount" className="text-xs font-black text-neutral-800">
+              <div className="bg-line/60 px-2 py-1 rounded-lg border border-line/30 shadow-inner">
+                <span className="block text-[8px] text-ink-soft font-black uppercase">Center</span>
+                <span id="centerCableCount" className="text-xs font-black text-ink">
                   {cables.center}
                 </span>
               </div>
-              <div className="bg-neutral-300/60 px-2 py-1 rounded-lg border border-neutral-300/30 shadow-inner">
-                <span className="block text-[8px] text-neutral-600 font-black uppercase">Radius</span>
-                <span id="radiusCableCount" className="text-xs font-black text-neutral-800">
+              <div className="bg-line/60 px-2 py-1 rounded-lg border border-line/30 shadow-inner">
+                <span className="block text-[8px] text-ink-soft font-black uppercase">Radius</span>
+                <span id="radiusCableCount" className="text-xs font-black text-ink">
                   {cables.radius}
                 </span>
               </div>
@@ -814,19 +814,19 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
           </section>
 
           {/* Clearance & Safety Audit Panel */}
-          <section className="bg-neutral-200 border border-neutral-300 rounded-xl p-3 space-y-2.5 shadow-sm">
+          <section className="bg-paper border border-line rounded-xl p-3 space-y-2.5 shadow-sm">
             <div className="flex items-center justify-between">
-              <h3 className="text-[9px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse"></span>
+              <h3 className="text-[9px] font-black text-gold-dark uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-gold-hover animate-pulse"></span>
                 Clearance &amp; Safety Audit
               </h3>
-              <span className="text-[9px] font-mono text-neutral-600 uppercase bg-neutral-300 px-2 py-0.5 rounded font-bold">
+              <span className="text-[9px] font-mono text-ink-soft uppercase bg-line px-2 py-0.5 rounded font-bold">
                 {(activeBin.measurements?.filter(m => m.p1 && m.p2).length || 0)} Cables
               </span>
             </div>
 
             {(!activeBin.measurements || activeBin.measurements.filter(m => m.p1 && m.p2).length === 0) ? (
-              <div className="text-[10px] text-neutral-500 italic p-3 text-center border border-dashed border-neutral-300 rounded-lg">
+              <div className="text-[10px] text-ink-soft italic p-3 text-center border border-dashed border-line rounded-lg">
                 No custom lines drawn. Use the Measure Tool on the blueprint to place temperature cables.
               </div>
             ) : (
@@ -855,32 +855,32 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                   const clearanceAboveCrossAuger = installedClearanceFloor - crossAugerHeightFt;
 
                   let statusColor = 'text-emerald-700';
-                  let statusBg = 'bg-emerald-50 border-emerald-200 text-neutral-800';
+                  let statusBg = 'bg-emerald-50 border-emerald-200 text-ink';
                   let statusText = 'Optimal';
                   let statusIcon = '✓';
                   let recommendation = '';
 
                   if (installedClearanceFloor < 0) {
                     statusColor = 'text-red-700';
-                    statusBg = 'bg-red-50 border-red-200 text-neutral-800';
+                    statusBg = 'bg-red-50 border-red-200 text-ink';
                     statusText = 'CRITICAL: Tearing Risk';
                     statusIcon = '⚠️';
                     recommendation = `The standard ${roundedLength}' cable is too long! It will penetrate the aeration floor by ${Math.abs(installedClearanceFloor).toFixed(1)}'. Choose a shorter standard length to protect the equipment.`;
                   } else if (clearanceAboveCrossAuger < 0) {
                     statusColor = 'text-red-700';
-                    statusBg = 'bg-red-50 border-red-200 text-neutral-800';
+                    statusBg = 'bg-red-50 border-red-200 text-ink';
                     statusText = 'CRITICAL: Auger Risk';
                     statusIcon = '⚠️';
                     recommendation = `The standard ${roundedLength}' cable hangs below the top of the cross auger! High risk of $450 tearing damage during cleanout. Shorten the cable.`;
                   } else if (clearanceAboveCrossAuger < 1.0) {
-                    statusColor = 'text-amber-700';
-                    statusBg = 'bg-amber-50 border-amber-200 text-neutral-800';
+                    statusColor = 'text-gold-hover';
+                    statusBg = 'bg-gold-light border-gold-light text-ink';
                     statusText = 'Caution: Low Clearance';
                     statusIcon = '⚠️';
                     recommendation = `Standard ${roundedLength}' cable terminates only ${clearanceAboveCrossAuger.toFixed(1)}' above the cross auger (leaves less than 1' of safety clearance). Use extreme caution.`;
                   } else if (clearanceAboveCrossAuger > 3.0) {
-                    statusColor = 'text-amber-700';
-                    statusBg = 'bg-amber-50 border-amber-200 text-neutral-800';
+                    statusColor = 'text-gold-hover';
+                    statusBg = 'bg-gold-light border-gold-light text-ink';
                     statusText = 'Caution: Terminated High';
                     statusIcon = '⚠️';
                     recommendation = `Standard ${roundedLength}' cable terminates ${clearanceAboveCrossAuger.toFixed(1)}' above the cross auger, leaving over ${installedClearanceFloor.toFixed(1)}' of grain at the bottom unmonitored.`;
@@ -891,7 +891,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                   return (
                     <div key={idx} className={`p-2 rounded-lg border text-[11px] ${statusBg}`}>
                       <div className="flex justify-between items-center mb-1">
-                        <span className="font-extrabold text-neutral-800">
+                        <span className="font-extrabold text-ink">
                           Cable #{idx + 1} ({isCenter ? 'Center' : 'Radius'})
                         </span>
                         <button
@@ -906,21 +906,21 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                             }));
                             calculateCablesFromMeasurements(newMeasurements);
                           }}
-                          className="text-neutral-400 hover:text-red-600 transition-colors cursor-pointer p-0.5 text-center flex items-center"
+                          className="text-ink-soft hover:text-red-600 transition-colors cursor-pointer p-0.5 text-center flex items-center"
                           title="Delete cable"
                         >
                           <Trash2 size={11} />
                         </button>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 font-medium text-neutral-600 my-1">
-                        <div>Hanger Ht: <span className="text-neutral-900 font-mono font-bold">{startHeightFt.toFixed(1)}'</span></div>
-                        <div>Standard Order: <span className="text-amber-800 font-mono font-black">{roundedLength}'</span></div>
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 font-medium text-ink-soft my-1">
+                        <div>Hanger Ht: <span className="text-ink font-mono font-bold">{startHeightFt.toFixed(1)}'</span></div>
+                        <div>Standard Order: <span className="text-gold-dark font-mono font-black">{roundedLength}'</span></div>
                         <div>Auger Clear: <span className={`${clearanceAboveCrossAuger < 1.0 ? 'text-red-600' : 'text-emerald-600'} font-mono font-extrabold`}>{clearanceAboveCrossAuger.toFixed(1)}'</span></div>
                         <div>Status: <span className={`${statusColor} font-bold`}>{statusIcon} {statusText}</span></div>
                       </div>
                       
-                      <p className="text-[9px] text-neutral-600 leading-normal mt-1 border-t border-neutral-300/60 pt-1 font-normal">
+                      <p className="text-[9px] text-ink-soft leading-normal mt-1 border-t border-line/60 pt-1 font-normal">
                         {recommendation}
                       </p>
                     </div>
@@ -931,14 +931,14 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
           </section>
 
           <section className="flex flex-col min-h-[300px] h-[300px] flex-none">
-            <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-[10px] font-black text-ink-soft uppercase tracking-wider mb-1.5">
               Grain Bin Notes
             </label>
             <textarea
               id="userNotes"
               value={activeBin.notes || ''}
               onChange={(e) => handleUpdateNotes(e.target.value)}
-              className="w-full h-full p-2.5 bg-neutral-200 border border-neutral-300 rounded-lg text-xs text-neutral-900 resize-none outline-none min-h-[80px] custom-scrollbar focus:border-amber-500 focus:ring-1 focus:ring-amber-500 shadow-sm font-semibold"
+              className="w-full h-full p-2.5 bg-paper border border-line rounded-lg text-xs text-ink resize-none outline-none min-h-[80px] custom-scrollbar focus:border-gold focus:ring-1 focus:ring-gold shadow-sm font-semibold"
               placeholder="Enter custom notes or specifications for this bin..."
             ></textarea>
           </section>
@@ -946,43 +946,43 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
       </aside>
 
       {/* Estimator Workspace Canvas */}
-      <div className="flex-grow flex flex-col bg-neutral-100 relative h-full">
+      <div className="flex-grow flex flex-col bg-paper relative h-full">
         {/* SVG Blueprint Tools Header */}
-        <div className="h-16 flex flex-wrap items-center justify-between px-6 border-b border-neutral-900 bg-neutral-950 shrink-0 gap-4">
+        <div className="h-16 flex flex-wrap items-center justify-between px-6 border-b border-surface bg-surface shrink-0 gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 bg-neutral-900 px-3 py-1.5 rounded-lg border border-neutral-800 h-9">
+            <div className="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-lg border border-surface h-9">
               <input
                 type="checkbox"
                 id="measureToggle"
                 checked={measureToolActive}
                 onChange={(e) => setMeasureToolActive(e.target.checked)}
-                className="w-4 h-4 accent-amber-400 cursor-pointer"
+                className="w-4 h-4 accent-gold cursor-pointer"
               />
-              <span className="text-[9px] text-zinc-400 font-bold uppercase whitespace-nowrap">Measure Tool</span>
+              <span className="text-[9px] text-ink-soft font-bold uppercase whitespace-nowrap">Measure Tool</span>
             </div>
-            <div className="flex items-center gap-2 bg-neutral-900 px-3 py-1.5 rounded-lg border border-neutral-800 h-9">
+            <div className="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-lg border border-surface h-9">
               <input
                 type="checkbox"
                 id="snapToggle"
                 checked={snapToGrid}
                 onChange={(e) => setSnapToGrid(e.target.checked)}
-                className="w-4 h-4 accent-amber-400 cursor-pointer"
+                className="w-4 h-4 accent-gold cursor-pointer"
               />
-              <span className="text-[9px] text-zinc-400 font-bold uppercase whitespace-nowrap">Snap to Grid</span>
+              <span className="text-[9px] text-ink-soft font-bold uppercase whitespace-nowrap">Snap to Grid</span>
             </div>
-            <div className="flex items-center gap-2 bg-neutral-900 px-3 py-1.5 rounded-lg border border-neutral-800 h-9">
+            <div className="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-lg border border-surface h-9">
               <input
                 type="checkbox"
                 id="featureSnapToggle"
                 checked={snapToFeatures}
                 onChange={(e) => setSnapToFeatures(e.target.checked)}
-                className="w-4 h-4 accent-amber-400 cursor-pointer"
+                className="w-4 h-4 accent-gold cursor-pointer"
               />
-              <span className="text-[9px] text-zinc-400 font-bold uppercase whitespace-nowrap">Smart Snap</span>
+              <span className="text-[9px] text-ink-soft font-bold uppercase whitespace-nowrap">Smart Snap</span>
             </div>
             <button
               onClick={() => onSwitchTab('planner')}
-              className="bg-neutral-900 hover:bg-neutral-800 text-amber-400 border border-neutral-800 rounded-lg px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 cursor-pointer h-9"
+              className="bg-surface hover:bg-surface text-gold border border-surface rounded-lg px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 cursor-pointer h-9"
             >
               <ArrowLeft size={14} />
               Back to 2D Map Layout
@@ -992,13 +992,13 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
           <div className="flex items-center gap-2">
             <button
               onClick={resetViewport}
-              className="bg-neutral-900 hover:bg-neutral-800 text-white text-[10px] font-bold px-4 py-2 rounded-lg border border-neutral-800 transition-colors h-9 uppercase cursor-pointer"
+              className="bg-surface hover:bg-surface text-ink text-[10px] font-bold px-4 py-2 rounded-lg border border-surface transition-colors h-9 uppercase cursor-pointer"
             >
               Reset View
             </button>
             <button
               onClick={clearMeasurements}
-              className="bg-neutral-900 hover:bg-neutral-850 text-zinc-400 text-[10px] font-bold px-4 py-2 rounded-lg border border-neutral-800 transition-colors h-9 uppercase cursor-pointer"
+              className="bg-surface hover:bg-surface text-ink-soft text-[10px] font-bold px-4 py-2 rounded-lg border border-surface transition-colors h-9 uppercase cursor-pointer"
             >
               Clear Measurements
             </button>
@@ -1018,16 +1018,16 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
             onMouseUp={handleSVGMouseUp}
             onMouseLeave={handleSVGMouseLeave}
             onWheel={handleSVGWheel}
-            className="touch-none bg-[#18181b] block h-full w-full"
+            className="touch-none bg-[#F7F6F2] block h-full w-full"
             style={{ cursor: measureToolActive ? 'crosshair' : 'grab' }}
           >
             <g id="viewport-group" transform={`translate(${view.x}, ${view.y}) scale(${view.scale})`}>
               <defs>
                 <pattern id="grid-large" width="50" height="50" patternUnits="userSpaceOnUse">
-                  <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#27272a" strokeWidth="1" />
+                  <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#E4E1D8" strokeWidth="1" />
                 </pattern>
                 <marker id="dot-marker" markerWidth="6" markerHeight="6" refX="3" refY="3" orientation="auto">
-                  <circle cx="3" cy="3" r="1.5" fill="#3f3f46" />
+                  <circle cx="3" cy="3" r="1.5" fill="#C7C2B2" />
                 </marker>
               </defs>
               <rect x="-4000" y="-4000" width="8000" height="8000" fill="url(#grid-large)" />
@@ -1035,29 +1035,29 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
               {/* Dimensions / Guides Layer */}
               <g id="dim-layer">
                 {/* Diameter Dimension line */}
-                <line x1={wl} y1={gy + 30} x2={wr} y2={gy + 30} stroke="#3f3f46" strokeWidth="1.2" />
-                <polygon points={`${wl},${gy + 30} ${wl + 6},${gy + 27} ${wl + 6},${gy + 33}`} fill="#3f3f46" />
-                <polygon points={`${wr},${gy + 30} ${wr - 6},${gy + 27} ${wr - 6},${gy + 33}`} fill="#3f3f46" />
-                <rect x={cx - 20} y={gy + 20} width="40" height="14" fill="#0a0a0a" rx="2" />
-                <text x={cx} y={gy + 31} textAnchor="middle" className="dim-text fill-zinc-400 font-bold text-[9px] uppercase tracking-wider font-sans">
+                <line x1={wl} y1={gy + 30} x2={wr} y2={gy + 30} stroke="#2B2A25" strokeWidth="1.2" />
+                <polygon points={`${wl},${gy + 30} ${wl + 6},${gy + 27} ${wl + 6},${gy + 33}`} fill="#2B2A25" />
+                <polygon points={`${wr},${gy + 30} ${wr - 6},${gy + 27} ${wr - 6},${gy + 33}`} fill="#2B2A25" />
+                <rect x={cx - 20} y={gy + 20} width="40" height="14" fill="#2B2A25" rx="2" />
+                <text x={cx} y={gy + 31} textAnchor="middle" className="dim-text fill-ink-soft font-bold text-[9px] uppercase tracking-wider font-sans">
                   {D}'
                 </text>
 
                 {/* Eave Height Dimension line */}
-                <line x1={wr + 35} y1={sgy} x2={wr + 35} y2={ey} stroke="#3f3f46" strokeWidth="1.2" />
-                <polygon points={`${wr + 35},${sgy} ${wr + 32},${sgy - 6} ${wr + 38},${sgy - 6}`} fill="#3f3f46" />
-                <polygon points={`${wr + 35},${ey} ${wr + 32},${ey + 6} ${wr + 38},${ey + 6}`} fill="#3f3f46" />
-                <rect x={wr + 15} y={ey + hp / 2 - 7} width="40" height="14" fill="#0a0a0a" rx="2" />
-                <text x={wr + 35} y={ey + hp / 2 + 4} textAnchor="middle" className="dim-text fill-zinc-400 font-bold text-[9px] uppercase tracking-wider font-sans">
+                <line x1={wr + 35} y1={sgy} x2={wr + 35} y2={ey} stroke="#2B2A25" strokeWidth="1.2" />
+                <polygon points={`${wr + 35},${sgy} ${wr + 32},${sgy - 6} ${wr + 38},${sgy - 6}`} fill="#2B2A25" />
+                <polygon points={`${wr + 35},${ey} ${wr + 32},${ey + 6} ${wr + 38},${ey + 6}`} fill="#2B2A25" />
+                <rect x={wr + 15} y={ey + hp / 2 - 7} width="40" height="14" fill="#2B2A25" rx="2" />
+                <text x={wr + 35} y={ey + hp / 2 + 4} textAnchor="middle" className="dim-text fill-ink-soft font-bold text-[9px] uppercase tracking-wider font-sans">
                   {E}'
                 </text>
 
                 {/* Total Height Dimension line */}
-                <line x1={wl - 35} y1={sgy} x2={wl - 35} y2={py} stroke="#3f3f46" strokeWidth="1.2" />
-                <polygon points={`${wl - 35},${sgy} ${wl - 38},${sgy - 6} ${wl - 32},${sgy - 6}`} fill="#3f3f46" />
-                <polygon points={`${wl - 35},${py} ${wl - 38},${py + 6} ${wl - 32},${py + 6}`} fill="#3f3f46" />
-                <rect x={wl - 55} y={py + tp / 2 - 7} width="40" height="14" fill="#0a0a0a" rx="2" />
-                <text x={wl - 35} y={py + tp / 2 + 4} textAnchor="middle" className="dim-text fill-zinc-400 font-bold text-[9px] uppercase tracking-wider font-sans">
+                <line x1={wl - 35} y1={sgy} x2={wl - 35} y2={py} stroke="#2B2A25" strokeWidth="1.2" />
+                <polygon points={`${wl - 35},${sgy} ${wl - 38},${sgy - 6} ${wl - 32},${sgy - 6}`} fill="#2B2A25" />
+                <polygon points={`${wl - 35},${py} ${wl - 38},${py + 6} ${wl - 32},${py + 6}`} fill="#2B2A25" />
+                <rect x={wl - 55} y={py + tp / 2 - 7} width="40" height="14" fill="#2B2A25" rx="2" />
+                <text x={wl - 35} y={py + tp / 2 + 4} textAnchor="middle" className="dim-text fill-ink-soft font-bold text-[9px] uppercase tracking-wider font-sans">
                   {H}'
                 </text>
 
@@ -1065,11 +1065,11 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                 {isHopper && (
                   <>
                     {/* Cone Height dimension */}
-                    <line x1={wr + 35} y1={coney} x2={wr + 35} y2={sgy} stroke="#f59e0b" strokeWidth="1.2" strokeDasharray="3 3" />
-                    <polygon points={`${wr + 35},${coney} ${wr + 32},${coney - 5} ${wr + 38},${coney - 5}`} fill="#f59e0b" />
-                    <polygon points={`${wr + 35},${sgy} ${wr + 32},${sgy + 5} ${wr + 38},${sgy + 5}`} fill="#f59e0b" />
-                    <rect x={wr + 15} y={sgy + cp / 2 - 7} width="42" height="14" fill="#0a0a0a" rx="2" />
-                    <text x={wr + 36} y={sgy + cp / 2 + 4} textAnchor="middle" className="dim-text fill-amber-400 font-extrabold text-[8px] uppercase tracking-wider font-sans">
+                    <line x1={wr + 35} y1={coney} x2={wr + 35} y2={sgy} stroke="#B8842E" strokeWidth="1.2" strokeDasharray="3 3" />
+                    <polygon points={`${wr + 35},${coney} ${wr + 32},${coney - 5} ${wr + 38},${coney - 5}`} fill="#B8842E" />
+                    <polygon points={`${wr + 35},${sgy} ${wr + 32},${sgy + 5} ${wr + 38},${sgy + 5}`} fill="#B8842E" />
+                    <rect x={wr + 15} y={sgy + cp / 2 - 7} width="42" height="14" fill="#2B2A25" rx="2" />
+                    <text x={wr + 36} y={sgy + cp / 2 + 4} textAnchor="middle" className="dim-text fill-gold font-extrabold text-[8px] uppercase tracking-wider font-sans">
                       {C}' Cone
                     </text>
                   </>
@@ -1081,36 +1081,36 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                 {isHopper ? (
                   <>
                     {/* Hopper Support Legs & Steel Frame */}
-                    <rect id="leg-pad-left" x={wl - 10} y={gy} width="20" height="8" className="foundation-stroke stroke-zinc-600 fill-[#a1a1aa]" />
-                    <rect id="leg-pad-right" x={wr - 10} y={gy} width="20" height="8" className="foundation-stroke stroke-zinc-600 fill-[#a1a1aa]" />
+                    <rect id="leg-pad-left" x={wl - 10} y={gy} width="20" height="8" className="foundation-stroke stroke-ink-soft fill-[#B8B4A8]" />
+                    <rect id="leg-pad-right" x={wr - 10} y={gy} width="20" height="8" className="foundation-stroke stroke-ink-soft fill-[#B8B4A8]" />
                     
                     {/* Support Legs (extend full length from ground gy up to sidewall bottom sgy) */}
-                    <line x1={wl} y1={sgy} x2={wl} y2={gy} className="stroke-zinc-400 stroke-3" />
-                    <line x1={wr} y1={sgy} x2={wr} y2={gy} className="stroke-zinc-400 stroke-3" />
-                    <line x1={wl + 6} y1={sgy} x2={wl + 6} y2={gy} className="stroke-zinc-600 stroke-1" />
-                    <line x1={wr - 6} y1={sgy} x2={wr - 6} y2={gy} className="stroke-zinc-600 stroke-1" />
+                    <line x1={wl} y1={sgy} x2={wl} y2={gy} className="stroke-ink-soft stroke-3" />
+                    <line x1={wr} y1={sgy} x2={wr} y2={gy} className="stroke-ink-soft stroke-3" />
+                    <line x1={wl + 6} y1={sgy} x2={wl + 6} y2={gy} className="stroke-ink-soft stroke-1" />
+                    <line x1={wr - 6} y1={sgy} x2={wr - 6} y2={gy} className="stroke-ink-soft stroke-1" />
 
                     {/* Leg Cross Bracing */}
-                    <line x1={wl} y1={sgy + 10} x2={cx - cw / 2} y2={coney - 5} className="stroke-zinc-600 stroke-1 [stroke-dasharray:3_3]" />
-                    <line x1={wr} y1={sgy + 10} x2={cx + cw / 2} y2={coney - 5} className="stroke-zinc-600 stroke-1 [stroke-dasharray:3_3]" />
+                    <line x1={wl} y1={sgy + 10} x2={cx - cw / 2} y2={coney - 5} className="stroke-ink-soft stroke-1 [stroke-dasharray:3_3]" />
+                    <line x1={wr} y1={sgy + 10} x2={cx + cw / 2} y2={coney - 5} className="stroke-ink-soft stroke-1 [stroke-dasharray:3_3]" />
 
                     {/* Core Hopper Shell Outline */}
                     <path
                       id="bin-outline"
                       d={`M ${wl} ${sgy} L ${wl} ${ey} L ${cx - lw / 2} ${py} L ${cx + lw / 2} ${py} L ${wr} ${ey} L ${wr} ${sgy} L ${cx + cw / 2} ${coney} L ${cx - cw / 2} ${coney} Z`}
-                      className="blueprint-stroke stroke-amber-400 fill-none stroke-2"
+                      className="blueprint-stroke stroke-gold fill-none stroke-2"
                     />
 
                     {/* Hopper Discharge Spout Flange (3ft above ground gy) */}
-                    <rect id="discharge-spout" x={cx - cw / 2 - 3} y={coney - 2} width={cw + 6} height="10" className="blueprint-stroke stroke-amber-400 fill-amber-500/20 stroke-2" />
+                    <rect id="discharge-spout" x={cx - cw / 2 - 3} y={coney - 2} width={cw + 6} height="10" className="blueprint-stroke stroke-gold fill-gold/20 stroke-2" />
                   </>
                 ) : (
                   <>
                     {/* Foundation */}
-                    <rect id="foundation" x={wl - 30} y={gy} width={wp + 60} height="15" className="foundation-stroke stroke-zinc-700 fill-[#a1a1aa]" />
+                    <rect id="foundation" x={wl - 30} y={gy} width={wp + 60} height="15" className="foundation-stroke stroke-line fill-[#B8B4A8]" />
 
                     {/* Aeration Floor */}
-                    <line id="aeration-floor" x1={wl} y1={gy - fp} x2={wr} y2={gy - fp} className="floor-stroke stroke-zinc-700 stroke-[1.5] [stroke-dasharray:4_4] fill-none" />
+                    <line id="aeration-floor" x1={wl} y1={gy - fp} x2={wr} y2={gy - fp} className="floor-stroke stroke-line stroke-[1.5] [stroke-dasharray:4_4] fill-none" />
 
                     {/* Auger sweep buffer */}
                     <rect id="auger-buffer-rect" x={wl} y={gy - fp - bufferHeight} width={wp} height={bufferHeight} className="auger-buffer fill-red-500/10 stroke-red-500/30 stroke-[1] [stroke-dasharray:2_2]" />
@@ -1119,7 +1119,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                     <path
                       id="bin-outline"
                       d={`M ${wl} ${gy} L ${wl} ${ey} L ${cx - lw / 2} ${py} L ${cx + lw / 2} ${py} L ${wr} ${ey} L ${wr} ${gy} Z`}
-                      className="blueprint-stroke stroke-amber-400 fill-none stroke-2"
+                      className="blueprint-stroke stroke-gold fill-none stroke-2"
                     />
                   </>
                 )}
@@ -1128,9 +1128,9 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                 <g id="tick-layer">
                   {wallTicks.map((t, idx) => (
                     <g key={idx}>
-                      <line x1={wl} y1={t.y} x2={wl + t.height} y2={t.y} className="tick-line stroke-neutral-800" strokeWidth="1" />
+                      <line x1={wl} y1={t.y} x2={wl + t.height} y2={t.y} className="tick-line stroke-surface" strokeWidth="1" />
                       {t.text && (
-                        <text x={wl + 16} y={t.y + 3} className="tick-text fill-zinc-600 font-bold text-[7px] font-sans">
+                        <text x={wl + 16} y={t.y + 3} className="tick-text fill-ink-soft font-bold text-[7px] font-sans">
                           {t.text}
                         </text>
                       )}
@@ -1139,7 +1139,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                 </g>
 
                 {/* Eave line */}
-                <line id="eave-dashed" x1={wl} y1={ey} x2={wr} y2={ey} className="eave-dashed-line stroke-amber-400/40 stroke-1 [stroke-dasharray:8_4]" />
+                <line id="eave-dashed" x1={wl} y1={ey} x2={wr} y2={ey} className="eave-dashed-line stroke-gold/40 stroke-1 [stroke-dasharray:8_4]" />
 
                 {/* Mid-Roof Marker line */}
                 <line id="mid-roof-marker" x1={mxLeft} y1={midRoofY} x2={mxRight} y2={midRoofY} className="mid-roof-line stroke-emerald-500 stroke-1 [stroke-dasharray:4_4] opacity-80" />
@@ -1148,7 +1148,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                 </text>
 
                 {/* Peak Lid */}
-                <rect id="peak-lid" x={cx - lw / 2 - 2} y={py - 4} width={lw + 4} height="8" className="blueprint-stroke stroke-amber-400 fill-none stroke-2" />
+                <rect id="peak-lid" x={cx - lw / 2 - 2} y={py - 4} width={lw + 4} height="8" className="blueprint-stroke stroke-gold fill-none stroke-2" />
               </g>
 
               {/* Measurements Interactive Layer */}
@@ -1157,8 +1157,8 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                   if (!line.p1) return null;
 
                   let isCenter = false;
-                  let strokeColor = '#ffffff';
-                  let pointColor = '#ffffff';
+                  let strokeColor = '#A5762A';
+                  let pointColor = '#A5762A';
                   let labelText = '';
                   let distFt = '0';
 
@@ -1172,8 +1172,8 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                     const centerThresholdPx = (D / 2) * pixelsPerFoot * 0.33;
 
                     isCenter = distFromCenterX <= centerThresholdPx;
-                    strokeColor = isCenter ? '#facc15' : '#67e8f9';
-                    pointColor = isCenter ? '#fbbf24' : '#22d3ee';
+                    strokeColor = isCenter ? '#B8842E' : '#6FA8A6';
+                    pointColor = isCenter ? '#7A4E10' : '#3E7C7A';
                     
                     labelText = `${distFt}'`;
                   }
@@ -1205,7 +1205,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                               fontSize: `${labelSize}px`,
                               fill: pointColor,
                               paintOrder: 'stroke',
-                              stroke: '#000000',
+                              stroke: '#2B2A25',
                               strokeWidth: '3px',
                               fontWeight: 'bold',
                             }}
@@ -1221,8 +1221,8 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                         cx={line.p1.x}
                         cy={line.p1.y}
                         r={ptRadius}
-                        fill={line.p2 ? pointColor : '#fbbf24'}
-                        stroke="#000000"
+                        fill={line.p2 ? pointColor : '#A5762A'}
+                        stroke="#2B2A25"
                         strokeWidth={1.5}
                         className="measurement-point cursor-move"
                         data-line-idx={idx}
@@ -1236,7 +1236,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                           cy={line.p2.y}
                           r={ptRadius}
                           fill={pointColor}
-                          stroke="#000000"
+                          stroke="#2B2A25"
                           strokeWidth={1.5}
                           className="measurement-point cursor-move"
                           data-line-idx={idx}
@@ -1262,7 +1262,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                     const isCenter = distFromCenterX <= centerThresholdPx;
                     
                     const strokeColor = isCenter ? 'rgba(250, 204, 21, 0.7)' : 'rgba(103, 232, 249, 0.7)';
-                    const textColor = isCenter ? '#fbbf24' : '#22d3ee';
+                    const textColor = isCenter ? '#7A4E10' : '#3E7C7A';
                     
                     const labelSize = 13 / view.scale;
 
@@ -1284,7 +1284,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                           r={5 / view.scale}
                           fill={textColor}
                           fillOpacity={0.8}
-                          stroke="#000000"
+                          stroke="#2B2A25"
                           strokeWidth={1.5}
                           className="pointer-events-none animate-pulse"
                         />
@@ -1295,7 +1295,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
                             fontSize: `${labelSize}px`,
                             fill: textColor,
                             paintOrder: 'stroke',
-                            stroke: '#000000',
+                            stroke: '#2B2A25',
                             strokeWidth: '3px',
                             fontWeight: 'bold',
                           }}

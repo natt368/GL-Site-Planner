@@ -333,6 +333,7 @@ export default function App() {
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastAutoSaved, setLastAutoSaved] = useState<Date | null>(null);
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
+  const [localSaveError, setLocalSaveError] = useState<string | null>(null);
 
   // Git synchronization states
   const [gitStatus, setGitStatus] = useState<{ hasChanges: boolean; changes: string[] } | null>(null);
@@ -480,8 +481,14 @@ export default function App() {
       localStorage.setItem('grainlink_project', JSON.stringify(project));
       // Update saved draft status
       setHasSavedDraft(true);
-    } catch (e) {
+      setLocalSaveError(null);
+    } catch (e: any) {
       console.error('Failed to save project state to localStorage:', e);
+      setLocalSaveError(
+        e?.name === 'QuotaExceededError'
+          ? 'Browser storage is full'
+          : 'Not saving to this browser'
+      );
     }
   }, [project]);
 
@@ -990,10 +997,18 @@ export default function App() {
           <div 
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-1.5 mt-3 select-none text-[10px] font-medium tracking-wide"
-            title={landingToken ? (lastAutoSaved ? `Last auto-saved to Google Drive at ${lastAutoSaved.toLocaleTimeString()}` : 'Auto-saves your plan every 1 minute') : 'Connect Google Drive to enable cloud auto-save'}
+            title={
+              localSaveError
+                ? `${localSaveError} — your work may not survive a page refresh. Try freeing up space or using a different browser.`
+                : landingToken
+                ? (lastAutoSaved ? `Last auto-saved to Google Drive at ${lastAutoSaved.toLocaleTimeString()}` : 'Auto-saves your plan every 1 minute')
+                : 'Connect Google Drive to enable cloud auto-save'
+            }
           >
             <span className="relative flex h-1.5 w-1.5 shrink-0">
-              {landingToken ? (
+              {localSaveError ? (
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500 animate-pulse"></span>
+              ) : landingToken ? (
                 autoSaveError ? (
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
                 ) : isAutoSaving ? (
@@ -1012,7 +1027,9 @@ export default function App() {
               )}
             </span>
             <span className="text-[10px] font-semibold uppercase shrink-0 flex items-center gap-1">
-              {isAutoSaving ? (
+              {localSaveError ? (
+                <span className="text-red-500">not saving</span>
+              ) : isAutoSaving ? (
                 <span className="text-gold-dark animate-pulse">saving...</span>
               ) : landingToken ? (
                 autoSaveError ? (

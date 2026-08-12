@@ -588,7 +588,7 @@ export default function App() {
       }
       loaded.driveFileId = fileId;
       setProject(loaded);
-      navigateTo(false, 'planner');
+      navigateTo(false, 'dashboard');
     } catch (err: any) {
       setLandingDriveError(err.message || 'Failed to load design');
       if (err.message?.includes('expired') || err.message?.includes('re-authorize') || err.message?.includes('401') || err.status === 401) {

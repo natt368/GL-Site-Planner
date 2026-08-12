@@ -11,7 +11,7 @@ import { LandingBackground } from './components/LandingBackground';
 import { CableEstimatorView } from './components/CableEstimatorView';
 import { BinSpecsView } from './components/BinSpecsView';
 import { generateUnifiedPDF } from './utils/pdfGenerator';
-import { LayoutDashboard, Map as MapIcon, Download, Loader2, Plus, FolderOpen, Cloud, RefreshCw, AlertTriangle, Play, ChevronRight, FileCode, LogOut, Search, X, Github, GitBranch, Home, FileText, Compass, Copy, Check } from 'lucide-react';
+import { LayoutDashboard, Map as MapIcon, Download, Loader2, Plus, FolderOpen, Cloud, RefreshCw, AlertTriangle, Play, ChevronRight, FileCode, LogOut, Search, X, Github, GitBranch, Home, FileText, Compass, Copy, Check, Pencil } from 'lucide-react';
 import {
   initAuth,
   googleSignIn,
@@ -153,6 +153,8 @@ export default function App() {
   const [activeBinId, setActiveBinId] = useState<number | null>(null);
   const [includeAssetDirectory, setIncludeAssetDirectory] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<boolean>(false);
+  const [showCustomerModal, setShowCustomerModal] = useState<boolean>(false);
+  const [isEditingCustomer, setIsEditingCustomer] = useState<boolean>(false);
 
   const handleCopyProjectId = () => {
     if (!project.id) return;
@@ -1141,13 +1143,6 @@ export default function App() {
                 >
                   {copiedId ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                 </button>
-                <button
-                  onClick={() => updateProjectWithHistory((prev) => ({ ...prev, id: generateProjectId() }))}
-                  className="p-1 text-ink-soft hover:text-gold transition-colors cursor-pointer"
-                  title="Generate New Unique ID"
-                >
-                  <RefreshCw size={12} />
-                </button>
               </div>
             </div>
             <input
@@ -1173,71 +1168,90 @@ export default function App() {
 
           <div>
             <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1">
-              Customer Name
+              Customer Info
             </label>
-            <input
-              type="text"
-              value={project.customer.name}
-              onChange={(e) =>
-                updateProjectWithHistory((prev) => ({
-                  ...prev,
-                  customer: { ...prev.customer, name: e.target.value },
-                }))
-              }
-              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-ink focus:border-gold outline-none transition-all font-semibold"
-            />
-          </div>
-          <div>
-            <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1">
-              Customer Phone
-            </label>
-            <input
-              type="text"
-              value={project.customer.phone}
-              onChange={(e) =>
-                updateProjectWithHistory((prev) => ({
-                  ...prev,
-                  customer: { ...prev.customer, phone: e.target.value },
-                }))
-              }
-              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-ink focus:border-gold outline-none transition-all font-semibold"
-            />
-          </div>
-          <div>
-            <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1">
-              Customer Email
-            </label>
-            <input
-              type="email"
-              value={project.customer.email || ''}
-              onChange={(e) =>
-                updateProjectWithHistory((prev) => ({
-                  ...prev,
-                  customer: { ...prev.customer, email: e.target.value },
-                }))
-              }
-              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-ink focus:border-gold outline-none transition-all font-semibold"
-              placeholder="customer@email.com"
-            />
-          </div>
-          <div>
-            <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1">
-              Customer Location / Address
-            </label>
-            <input
-              type="text"
-              value={project.customer.location || ''}
-              onChange={(e) =>
-                updateProjectWithHistory((prev) => ({
-                  ...prev,
-                  customer: { ...prev.customer, location: e.target.value },
-                }))
-              }
-              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-ink focus:border-gold outline-none transition-all font-semibold"
-              placeholder="e.g. Regina, SK"
-            />
+            <button
+              onClick={() => {
+                setIsEditingCustomer(false);
+                setShowCustomerModal(true);
+              }}
+              className="w-full bg-surface border border-line rounded-lg px-3 py-2.5 text-xs text-ink font-semibold text-left hover:border-gold transition-all cursor-pointer flex items-center justify-between"
+            >
+              <span className="truncate">{project.customer.name || 'Add customer details'}</span>
+              <ChevronRight size={14} className="text-ink-soft shrink-0" />
+            </button>
           </div>
         </div>
+
+        {showCustomerModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 backdrop-blur-sm p-4"
+            onClick={() => setShowCustomerModal(false)}
+          >
+            <div
+              className="bg-surface rounded-2xl border border-line shadow-xl w-full max-w-sm p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-sm font-black uppercase tracking-wider text-ink">Customer Info</h3>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setIsEditingCustomer((prev) => !prev)}
+                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                      isEditingCustomer ? 'bg-gold-light text-gold-dark' : 'text-ink-soft hover:text-gold hover:bg-paper'
+                    }`}
+                    title={isEditingCustomer ? 'Done editing' : 'Edit customer details'}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    onClick={() => setShowCustomerModal(false)}
+                    className="p-1.5 text-ink-soft hover:text-ink rounded-lg hover:bg-paper transition-colors cursor-pointer"
+                    title="Close"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {([
+                  { key: 'name', label: 'Customer Name', placeholder: '', type: 'text' },
+                  { key: 'phone', label: 'Customer Phone', placeholder: '', type: 'text' },
+                  { key: 'email', label: 'Customer Email', placeholder: 'customer@email.com', type: 'email' },
+                  { key: 'location', label: 'Customer Location / Address', placeholder: 'e.g. Regina, SK', type: 'text' },
+                ] as const).map((field) => (
+                  <div key={field.key}>
+                    <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1">
+                      {field.label}
+                    </label>
+                    {isEditingCustomer ? (
+                      <input
+                        type={field.type}
+                        value={(project.customer as any)[field.key] || ''}
+                        onChange={(e) =>
+                          updateProjectWithHistory((prev) => ({
+                            ...prev,
+                            customer: { ...prev.customer, [field.key]: e.target.value },
+                          }))
+                        }
+                        placeholder={field.placeholder}
+                        autoFocus={field.key === 'name'}
+                        className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-xs text-ink focus:border-gold outline-none transition-all font-semibold"
+                      />
+                    ) : (
+                      <p className="text-xs text-ink font-semibold px-3 py-2 min-h-[34px] flex items-center">
+                        {(project.customer as any)[field.key] || (
+                          <span className="text-ink-soft font-normal italic">Not set</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Global Unified PDF Report Export */}
         <div className="p-6 border-t border-line bg-surface flex flex-col gap-3">
@@ -1262,7 +1276,7 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 h-screen relative flex flex-col bg-paper overflow-hidden">
-        {/* Top Header Bar for Project ID and View Context */}
+        {/* Top Header Bar for View Context */}
         <header className="h-11 bg-surface border-b border-line px-6 flex items-center justify-between shrink-0 text-xs select-none z-10">
           <div className="flex items-center gap-3">
             <span className="font-extrabold uppercase tracking-widest text-ink-soft text-[11px]">
@@ -1273,20 +1287,6 @@ export default function App() {
             </span>
             <span className="text-ink">•</span>
             <span className="font-black text-ink uppercase tracking-tight text-xs">{project.name}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-2.5 py-1 bg-surface border border-line rounded-lg text-gold font-mono text-xs font-bold shadow-sm">
-              <span className="text-[9px] text-ink-soft font-sans uppercase font-bold tracking-wider">Project ID:</span>
-              <span className="tracking-wide">{project.id || 'PRJ-N/A'}</span>
-              <button
-                onClick={handleCopyProjectId}
-                className="p-0.5 text-ink-soft hover:text-ink transition-colors cursor-pointer ml-0.5 rounded hover:bg-paper"
-                title="Copy Unique Project ID"
-              >
-                {copiedId ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-              </button>
-            </div>
           </div>
         </header>
 

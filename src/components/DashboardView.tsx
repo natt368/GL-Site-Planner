@@ -45,14 +45,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [isSavingDrive, setIsSavingDrive] = useState(false);
   const [driveSuccessMessage, setDriveSuccessMessage] = useState<string | null>(null);
   const [driveError, setDriveError] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState(false);
-
-  const handleCopyProjectId = () => {
-    if (!project.id) return;
-    navigator.clipboard.writeText(project.id);
-    setCopiedId(true);
-    setTimeout(() => setCopiedId(false), 2000);
-  };
 
   useEffect(() => {
     const unsubscribe = initAuth(
@@ -461,17 +453,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <h2 id="dashboard-project-name" className="text-2xl md:text-3xl font-black text-ink tracking-tight uppercase">
               {project.name}
             </h2>
-            <div className="flex items-center gap-2 px-3 py-1 bg-surface text-gold border border-line rounded-xl text-xs font-mono font-bold shadow-sm">
-              <span className="text-[10px] text-ink-soft font-sans uppercase font-bold tracking-wider">Project ID:</span>
-              <span className="tracking-wide">{project.id || 'N/A'}</span>
-              <button
-                onClick={handleCopyProjectId}
-                className="p-1 text-ink-soft hover:text-ink transition-colors cursor-pointer rounded bg-surface border border-line ml-1"
-                title="Copy Unique Project ID"
-              >
-                {copiedId ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-              </button>
-            </div>
           </div>
         </div>
 

@@ -223,6 +223,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   let totalChesterX = 0;
   let totalChesterX1 = 0;
   let totalJunctionBoxes = 0;
+  let verifiedCableCount = 0;
+  let largestBin: { name: string; capacity: number; diameter: number } | null = null;
   const allBins: { yardName: string; bin: BinAsset }[] = [];
 
   project.yards.forEach((yard) => {
@@ -237,6 +239,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           Math.PI * Math.pow(D / 2, 2) * (Math.max(0, E - F) + (H - E) / 3) * 0.80356
         );
         totalCapacity += cap;
+        if ((b as BinAsset).centerCable || (b as BinAsset).radiusCable) {
+          verifiedCableCount++;
+        }
+        if (!largestBin || cap > largestBin.capacity) {
+          largestBin = { name: b.name || 'Unnamed bin', capacity: cap, diameter: D };
+        }
       } else if (b.type === 'chester-x') {
         totalChesterX++;
       } else if (b.type === 'chester-x1') {
@@ -248,6 +256,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
 
   const totalBins = allBins.length;
+  const avgBinCapacity = totalBins > 0 ? Math.round(totalCapacity / totalBins) : 0;
 
   // Yards CRUD actions
   const handleCreateYard = () => {
@@ -675,128 +684,85 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Assets Inventory Table */}
-        <div className="glass-panel rounded-2xl flex-1 min-h-[180px] flex flex-col border border-line bg-surface overflow-hidden">
-          <div className="p-5 border-b border-line flex justify-between items-center shrink-0">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-ink">Equipment List</h3>
-            <button
-              onClick={() => onSwitchTab('planner')}
-              className="px-3.5 py-1.5 bg-surface hover:bg-surface text-ink-soft text-[10px] font-bold uppercase rounded-lg border border-line transition-colors"
-            >
-              Draw Layout
-            </button>
-          </div>
-          <div className="overflow-auto flex-1 custom-scrollbar">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead className="sticky top-0 bg-surface/95 backdrop-blur-sm z-10">
-                <tr className="border-b border-line text-[9px] font-black uppercase text-ink-soft tracking-wider bg-surface/20">
-                  <th className="p-4">Yard Location</th>
-                  <th className="p-4">Name</th>
-                  <th className="p-4">Type</th>
-                  <th className="p-4">Dimensions</th>
-                  <th className="p-4">Storage (BU)</th>
-                  <th className="p-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="dashboard-table-body" className="divide-y divide-line/40">
-                {project.yards.some((y) => y.bins.length > 0) ? (
-                  (() => {
-                    const allAssets = project.yards.flatMap((yard) =>
-                      yard.bins.map((bin) => ({ yard, bin }))
-                    );
-                    const getSortWeight = (type: string) => {
-                      if (type === 'chester-x' || type === 'chester-x1') return 1;
-                      if (type === 'bin') return 2;
-                      if (type === 'junction-box') return 3;
-                      if (type === 'fan-control') return 4;
-                      if (type === 'zone') return 5;
-                      return 6;
-                    };
-                    const sortedAssets = [...allAssets].sort((a, b) => {
-                      const wA = getSortWeight(a.bin.type);
-                      const wB = getSortWeight(b.bin.type);
-                      if (wA !== wB) return wA - wB;
-                      return (a.bin.name || '').localeCompare(b.bin.name || '');
-                    });
-                    const getBadgeColor = (type: string) => {
-                      if (type === 'bin') return 'bg-gold/10 text-gold border-gold/20';
-                      if (type === 'chester-x') return 'bg-red-500/10 text-red-500 border-red-500/20';
-                      if (type === 'chester-x1') return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-                      if (type === 'junction-box') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-                      if (type === 'fan-control') return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
-                      return 'bg-surface text-ink-soft border-line';
-                    };
-                    const getBadgeLabel = (type: string) => {
-                      if (type === 'bin') return 'Bin Unit';
-                      if (type === 'chester-x') return 'Chester-X';
-                      if (type === 'chester-x1') return 'Chester-X1';
-                      if (type === 'junction-box') return 'Junction Box';
-                      if (type === 'fan-control') return 'Fan Control';
-                      return 'Cable Zone';
-                    };
+        {/* Project Stats */}
+        <div className="glass-panel rounded-2xl flex-1 min-h-[180px] flex flex-col border border-line bg-surface overflow-hidden p-5">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-ink mb-4">Project Stats</h3>
 
-                    return sortedAssets.map(({ yard, bin }) => {
-                      let typeBadge = (
-                        <span className={`px-2 py-0.5 border text-[9px] font-black uppercase rounded ${getBadgeColor(bin.type)}`}>
-                          {getBadgeLabel(bin.type)}
-                        </span>
-                      );
-                      let dimensionsStr = '';
-                      let capacityStr = '-';
+          <div className="space-y-5">
+            {/* Cable verification progress */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] text-ink-soft font-bold uppercase tracking-wider">
+                  Bins with Verified Cables
+                </span>
+                <span className="text-xs font-bold text-ink font-mono">
+                  {verifiedCableCount} / {totalBins}
+                </span>
+              </div>
+              <div className="h-2 w-full bg-paper rounded-full overflow-hidden border border-line">
+                <div
+                  className="h-full bg-gold rounded-full transition-all"
+                  style={{ width: totalBins > 0 ? `${(verifiedCableCount / totalBins) * 100}%` : '0%' }}
+                />
+              </div>
+              {totalBins > 0 && verifiedCableCount < totalBins && (
+                <p className="text-[10px] text-ink-soft mt-1.5">
+                  {totalBins - verifiedCableCount} bin{totalBins - verifiedCableCount === 1 ? '' : 's'} still using estimated cable lengths — measure in Cable Lengths for accurate figures.
+                </p>
+              )}
+            </div>
 
-                      if (bin.type === 'bin') {
-                        dimensionsStr = `${bin.diameter}' Dia | ${bin.eaveHeight}' Eave | ${bin.totalHeight}' Ht`;
-                        const D = parseFloat(bin.diameter) || 0;
-                        const H = parseFloat(bin.totalHeight) || 0;
-                        const E = parseFloat(bin.eaveHeight) || 0;
-                        const F = parseFloat(bin.floorThick) || 0;
-                        const cap = Math.round(
-                          Math.PI * Math.pow(D / 2, 2) * (Math.max(0, E - F) + (H - E) / 3) * 0.80356
-                        );
-                        capacityStr = `${cap.toLocaleString()} BU`;
-                      } else if (bin.type === 'chester-x' || bin.type === 'chester-x1' || bin.type === 'junction-box' || bin.type === 'fan-control') {
-                        dimensionsStr = `${(bin as any).diameter || '10'}' Size`;
-                      } else if (bin.type === 'zone') {
-                        dimensionsStr = `${bin.width}' W x ${bin.height}' H`;
-                      }
+            <div className="grid grid-cols-2 gap-4 pt-1">
+              {/* Average bin capacity */}
+              <div>
+                <span className="text-[9px] text-ink-soft font-bold uppercase tracking-wider block">
+                  Average Bin Size
+                </span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-lg font-bold text-ink font-mono">
+                    {avgBinCapacity.toLocaleString()}
+                  </span>
+                  <span className="text-[10px] font-bold text-ink-soft">BU</span>
+                </div>
+              </div>
 
-                      return (
-                        <tr key={bin.id} className="hover:bg-surface/20 transition-colors border-b border-line/30">
-                          <td className="p-4 font-bold text-ink-soft text-xs">{yard.name}</td>
-                          <td className="p-4 font-bold text-ink">{bin.name || 'Unnamed Item'}</td>
-                          <td className="p-4">{typeBadge}</td>
-                          <td className="p-4 text-ink-soft font-semibold">{dimensionsStr}</td>
-                          <td className="p-4 font-mono">{capacityStr}</td>
-                          <td className="p-4 text-right">
-                            <button
-                              onClick={() => onLocateAsset(bin.id)}
-                              className="px-3 py-1.5 bg-surface hover:bg-surface text-ink-soft border border-line text-[10px] font-black uppercase rounded transition-colors flex items-center gap-1.5 ml-auto"
-                            >
-                              <MapPin size={12} className="text-gold" />
-                              Locate
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    });
-                  })()
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="p-12 text-center">
-                      <p className="text-ink-soft text-xs font-semibold mb-3">
-                        Nothing added yet.
-                      </p>
-                      <button
-                        onClick={() => onSwitchTab('planner')}
-                        className="px-4 py-2 bg-gold hover:bg-gold-hover text-ink font-bold text-xs rounded-lg cursor-pointer transition-colors"
-                      >
-                        Add your first bin
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+              {/* Junction boxes (not already surfaced elsewhere) */}
+              <div>
+                <span className="text-[9px] text-ink-soft font-bold uppercase tracking-wider block">
+                  Junction Boxes
+                </span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-lg font-bold text-ink font-mono">{totalJunctionBoxes}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Largest bin */}
+            {largestBin && (
+              <div className="pt-1 border-t border-line/60">
+                <span className="text-[9px] text-ink-soft font-bold uppercase tracking-wider block mb-1">
+                  Largest Bin
+                </span>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-sm font-bold text-ink">{(largestBin as any).name}</span>
+                  <span className="text-xs font-mono text-gold font-bold">
+                    {(largestBin as any).capacity.toLocaleString()} BU
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {totalBins === 0 && (
+              <div className="text-center py-4">
+                <p className="text-ink-soft text-xs font-semibold mb-3">No bins added yet.</p>
+                <button
+                  onClick={() => onSwitchTab('planner')}
+                  className="px-4 py-2 bg-gold hover:bg-gold-hover text-ink font-bold text-xs rounded-lg cursor-pointer transition-colors"
+                >
+                  Add your first bin
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

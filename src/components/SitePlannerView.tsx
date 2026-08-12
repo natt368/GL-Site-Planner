@@ -222,6 +222,19 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     return () => observer.disconnect();
   }, []);
 
+  // Auto-fit the view to the bins once, the first time we have real
+  // (non-placeholder) dimensions for the canvas - equivalent to pressing
+  // "Reset View" automatically when entering the Site Planner, so the
+  // person isn't dropped into an empty or off-center view.
+  const hasAutoFitRef = useRef(false);
+  useEffect(() => {
+    if (hasAutoFitRef.current) return;
+    if (dimensions.width <= 0 || dimensions.height <= 0) return;
+    hasAutoFitRef.current = true;
+    resetView();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dimensions]);
+
   // Helper coordinate conversion
   const screenToWorld = (sx: number, sy: number) => {
     return {

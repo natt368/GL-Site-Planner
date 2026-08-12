@@ -1176,6 +1176,23 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   }, [selectedAssetId, selectedAssetIds, snapToGrid, onUpdateProject, handleDeleteAsset, handleDuplicateAsset]);
 
   const handleUpdateAssetProperty = (key: string, value: any) => {
+    // Dimension fields feed directly into the diagram's scale calculation
+    // (pixelsPerFoot = 400 / max(...)). A zero, negative, or non-numeric
+    // value here would silently break the whole diagram, so guard it here
+    // rather than only hinting at a minimum via the input's `min` attribute
+    // (which doesn't actually block a typed value in most browsers).
+    const dimensionFields = ['diameter', 'eaveHeight', 'totalHeight'];
+    let safeValue = value;
+    if (dimensionFields.includes(key)) {
+      const parsed = parseFloat(value);
+      if (value === '' || isNaN(parsed)) {
+        // Allow an empty/in-progress field while the person is typing
+        safeValue = value;
+      } else if (parsed <= 0) {
+        safeValue = '0.1';
+      }
+    }
+
     onUpdateProject((prev) => ({
       ...prev,
       yards: prev.yards.map((y) =>
@@ -1184,9 +1201,9 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
               ...y,
               bins: y.bins.map((b) => {
                 if (b.id !== selectedAssetId) return b;
-                const updated = { ...b, [key]: value };
+                const updated = { ...b, [key]: safeValue };
                 if (key === 'eaveHeight' && b.type === 'bin') {
-                  updated.rings = Math.round(parseFloat(value) / 4).toString();
+                  updated.rings = Math.round(parseFloat(safeValue) / 4).toString();
                 }
                 return updated;
               }),
@@ -2195,6 +2212,8 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                         <label className="text-[9px] uppercase font-bold text-ink-soft mb-1 block">Diameter (ft)</label>
                         <input
                           type="number"
+                          min="0.1"
+                          step="0.1"
                           value={(selectedAsset as BinAsset).diameter}
                           onChange={(e) => handleUpdateAssetProperty('diameter', e.target.value)}
                           className="w-full bg-paper border border-line rounded-lg p-2.5 text-ink focus:border-gold outline-none text-sm font-semibold"
@@ -2206,6 +2225,8 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                         </label>
                         <input
                           type="number"
+                          min="0.1"
+                          step="0.1"
                           value={(selectedAsset as BinAsset).eaveHeight}
                           onChange={(e) => handleUpdateAssetProperty('eaveHeight', e.target.value)}
                           className="w-full bg-paper border border-line rounded-lg p-2.5 text-ink focus:border-gold outline-none text-sm font-semibold"
@@ -2217,6 +2238,8 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                         </label>
                         <input
                           type="number"
+                          min="0.1"
+                          step="0.1"
                           value={(selectedAsset as BinAsset).totalHeight}
                           onChange={(e) => handleUpdateAssetProperty('totalHeight', e.target.value)}
                           className="w-full bg-paper border border-line rounded-lg p-2.5 text-ink focus:border-gold outline-none text-sm font-semibold"

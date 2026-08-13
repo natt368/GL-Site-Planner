@@ -84,6 +84,8 @@ export interface WireConnection {
   fromId: number;
   toId: number;
   type: 'cat5' | 'female-link';
+  bendX?: number;
+  bendY?: number;
 }
 
 export interface Yard {

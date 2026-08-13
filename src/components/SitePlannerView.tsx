@@ -4,7 +4,7 @@
  */
 
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
-import { Project, Yard, Asset, BinAsset, MarkerAsset, ZoneAsset, BinSpecModel } from '../types';
+import { Project, Yard, Asset, BinAsset, MarkerAsset, ZoneAsset, BinSpecModel, WireConnection } from '../types';
 import { getCableRecommendation } from '../utils/pdfGenerator';
 import { BIN_DATABASE } from '../data/binDatabase';
 import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search } from 'lucide-react';
@@ -25,6 +25,43 @@ const BIN_SIZES = [18, 24, 30, 36, 42, 48, 50];
 
 function escapeRegExp(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Computes the quadratic-curve control point and resulting curve midpoint
+ * for a wire between two endpoints. If the wire has a user-set bend point
+ * (wire.bendX/bendY), the control point is derived so the curve passes
+ * exactly through that point - the endpoints stay put, and the curve bends
+ * through wherever the person dragged the midpoint. Otherwise falls back to
+ * the automatic perpendicular offset used to avoid overlapping bins.
+ */
+function getWireCurve(x1: number, y1: number, x2: number, y2: number, wire: WireConnection) {
+  const midX = (x1 + x2) / 2;
+  const midY = (y1 + y2) / 2;
+
+  let ctrlX: number;
+  let ctrlY: number;
+
+  if (wire.bendX !== undefined && wire.bendY !== undefined) {
+    // Reverse the quadratic-bezier midpoint formula (P0 + 2*P1 + P2) / 4
+    // so the curve's t=0.5 point lands exactly on the dragged bend point.
+    ctrlX = 2 * wire.bendX - midX;
+    ctrlY = 2 * wire.bendY - midY;
+  } else {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const offset = Math.max(30, len * 0.25);
+    const px = -dy / (len || 1);
+    const py = dx / (len || 1);
+    ctrlX = midX + px * offset;
+    ctrlY = midY + py * offset;
+  }
+
+  const curveMidX = 0.25 * x1 + 0.5 * ctrlX + 0.25 * x2;
+  const curveMidY = 0.25 * y1 + 0.5 * ctrlY + 0.25 * y2;
+
+  return { ctrlX, ctrlY, curveMidX, curveMidY };
 }
 
 export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
@@ -94,6 +131,18 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     anchorX?: number;
     anchorY?: number;
   }>({ active: false });
+
+  // Tracks a potential drag on a wire's midpoint handle. A plain click
+  // (no meaningful movement) still deletes the wire, as before; dragging
+  // it instead bends the wire through that point while keeping both
+  // endpoints snapped to their assets.
+  const wireBendInfoRef = useRef<{
+    active: boolean;
+    wireId: number | null;
+    startScreenX: number;
+    startScreenY: number;
+    hasMoved: boolean;
+  }>({ active: false, wireId: null, startScreenX: 0, startScreenY: 0, hasMoved: false });
 
   const activeYard = useMemo(() => {
     return project.yards.find((y) => y.id === project.activeYardId) || project.yards[0];
@@ -445,19 +494,10 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
       const x2 = toAsset.x;
       const y2 = toAsset.y;
 
-      // Calculate control point for curved wires to bypass overlapping bins/markers
-      const midX = (x1 + x2) / 2;
-      const midY = (y1 + y2) / 2;
-
-      const dx = x2 - x1;
-      const dy = y2 - y1;
-      const len = Math.sqrt(dx * dx + dy * dy);
-      const offset = Math.max(30, len * 0.25);
-      const px = -dy / (len || 1);
-      const py = dx / (len || 1);
-
-      const ctrlX = midX + px * offset;
-      const ctrlY = midY + py * offset;
+      // Control point for the wire's curve - passes through the user's
+      // dragged bend point if one is set, otherwise an automatic offset
+      // to bypass overlapping bins/markers.
+      const { ctrlX, ctrlY, curveMidX, curveMidY } = getWireCurve(x1, y1, x2, y2, wire);
 
       // Determine wire color: Cat5 = Blue, Female Link = Rose
       const wireColor = wire.type === 'cat5' ? '#3b82f6' : '#f43f5e';
@@ -472,9 +512,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Draw small interactive delete button at the midpoint of the wire curve
-      const curveMidX = 0.25 * x1 + 0.5 * ctrlX + 0.25 * x2;
-      const curveMidY = 0.25 * y1 + 0.5 * ctrlY + 0.25 * y2;
+      // Draw small interactive delete/drag handle at the midpoint of the wire curve
 
       ctx.save();
       const isHovered = hoveredWireId === wire.id;
@@ -1300,19 +1338,18 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     const mouseY = e.clientY - rect.top;
     const worldPos = screenToWorld(mouseX, mouseY);
 
-    // If we clicked a wire's delete button, delete it
+    // If we clicked a wire's midpoint handle: track it as a potential drag.
+    // A plain click (released without meaningful movement) still deletes
+    // the wire, same as before. Dragging instead bends the wire through
+    // wherever the mouse moves, while both endpoints stay snapped in place.
     if (hoveredWireId !== null) {
-      onUpdateProject((prev) => ({
-        ...prev,
-        yards: prev.yards.map((y) => {
-          if (y.id !== prev.activeYardId) return y;
-          return {
-            ...y,
-            wires: (y.wires || []).filter((w) => w.id !== hoveredWireId),
-          };
-        }),
-      }));
-      setHoveredWireId(null);
+      wireBendInfoRef.current = {
+        active: true,
+        wireId: hoveredWireId,
+        startScreenX: mouseX,
+        startScreenY: mouseY,
+        hasMoved: false,
+      };
       return;
     }
 
@@ -1475,8 +1512,39 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
       return;
     }
 
+    // Actively bending a wire: update its bend point as the mouse moves.
+    // The endpoints are never touched here, so they stay snapped to
+    // whatever assets they're connected to.
+    if (wireBendInfoRef.current.active && wireBendInfoRef.current.wireId !== null) {
+      const dxScreen = mouseX - wireBendInfoRef.current.startScreenX;
+      const dyScreen = mouseY - wireBendInfoRef.current.startScreenY;
+      if (!wireBendInfoRef.current.hasMoved && Math.hypot(dxScreen, dyScreen) > 4) {
+        wireBendInfoRef.current.hasMoved = true;
+      }
+      if (wireBendInfoRef.current.hasMoved) {
+        const bendWireId = wireBendInfoRef.current.wireId;
+        onUpdateProject((prev) => ({
+          ...prev,
+          yards: prev.yards.map((y) => {
+            if (y.id !== prev.activeYardId) return y;
+            return {
+              ...y,
+              wires: (y.wires || []).map((w) =>
+                w.id === bendWireId ? { ...w, bendX: worldPos.x, bendY: worldPos.y } : w
+              ),
+            };
+          }),
+        }));
+      }
+      return;
+    }
+
     // Track hover information if not actively dragging/panning/resizing
-    const isInteracting = dragInfoRef.current.active || panInfoRef.current.active || resizeInfoRef.current.active;
+    const isInteracting =
+      dragInfoRef.current.active ||
+      panInfoRef.current.active ||
+      resizeInfoRef.current.active ||
+      wireBendInfoRef.current.active;
 
     // Track hovered wire delete button
     let foundHoveredWireId: number | null = null;
@@ -1492,21 +1560,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
         const x2 = toAsset.x;
         const y2 = toAsset.y;
 
-        const midX = (x1 + x2) / 2;
-        const midY = (y1 + y2) / 2;
-
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const len = Math.sqrt(dx * dx + dy * dy);
-        const offset = Math.max(30, len * 0.25);
-        const px = -dy / (len || 1);
-        const py = dx / (len || 1);
-
-        const ctrlX = midX + px * offset;
-        const ctrlY = midY + py * offset;
-
-        const curveMidX = 0.25 * x1 + 0.5 * ctrlX + 0.25 * x2;
-        const curveMidY = 0.25 * y1 + 0.5 * ctrlY + 0.25 * y2;
+        const { curveMidX, curveMidY } = getWireCurve(x1, y1, x2, y2, wire);
 
         const dist = Math.sqrt(Math.pow(worldPos.x - curveMidX, 2) + Math.pow(worldPos.y - curveMidY, 2));
         if (dist < 10 / view.scale) {
@@ -1577,10 +1631,12 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
       canvasRef.current.style.cursor = 'crosshair';
     } else if (resizeInfoRef.current.active || hoverResizeHandle) {
       canvasRef.current.style.cursor = 'se-resize';
+    } else if (wireBendInfoRef.current.active) {
+      canvasRef.current.style.cursor = 'grabbing';
     } else if (dragInfoRef.current.active) {
       canvasRef.current.style.cursor = 'grabbing';
     } else if (foundHoveredWireId !== null) {
-      canvasRef.current.style.cursor = 'pointer';
+      canvasRef.current.style.cursor = 'grab';
     } else if (selectionBox) {
       canvasRef.current.style.cursor = 'crosshair';
     } else {
@@ -1681,6 +1737,25 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     dragInfoRef.current.active = false;
     panInfoRef.current.active = false;
     resizeInfoRef.current.active = false;
+
+    if (wireBendInfoRef.current.active) {
+      const { wireId, hasMoved } = wireBendInfoRef.current;
+      if (!hasMoved && wireId !== null) {
+        // No real movement happened - treat it as the original click-to-delete.
+        onUpdateProject((prev) => ({
+          ...prev,
+          yards: prev.yards.map((y) => {
+            if (y.id !== prev.activeYardId) return y;
+            return {
+              ...y,
+              wires: (y.wires || []).filter((w) => w.id !== wireId),
+            };
+          }),
+        }));
+        setHoveredWireId(null);
+      }
+      wireBendInfoRef.current = { active: false, wireId: null, startScreenX: 0, startScreenY: 0, hasMoved: false };
+    }
 
     if (selectionBox) {
       const ids = getAssetsInSelectionBox(selectionBox);

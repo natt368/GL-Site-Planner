@@ -102,6 +102,8 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
   const [mouseWorldPos, setMouseWorldPos] = useState<{ x: number; y: number } | null>(null);
   const [hoveredWireId, setHoveredWireId] = useState<number | null>(null);
+  const [wireThickness, setWireThickness] = useState<number>(2.5);
+  const [showWireSettings, setShowWireSettings] = useState<boolean>(false);
 
   // Multi-selection states
   const [selectionMode, setSelectionMode] = useState<'select' | 'pan'>('pan');
@@ -507,7 +509,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
       ctx.moveTo(x1, y1);
       ctx.quadraticCurveTo(ctrlX, ctrlY, x2, y2);
       ctx.strokeStyle = wireColor;
-      ctx.lineWidth = 2.5 / view.scale;
+      ctx.lineWidth = wireThickness / view.scale;
       ctx.setLineDash([5, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
@@ -601,7 +603,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
     // Draw Compass
     drawCompass(ctx, dimensions.width - 60, 60);
-  }, [dimensions, view, activeYard, selectedAssetId, selectedAssetIds, selectionBox]);
+  }, [dimensions, view, activeYard, selectedAssetId, selectedAssetIds, selectionBox, wireThickness, hoveredWireId]);
 
   const drawCompass = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
     ctx.save();
@@ -2794,6 +2796,48 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
             <div className={`w-1.5 h-1.5 rounded-full transition-colors ${snapToObject ? 'bg-gold animate-pulse' : 'bg-line'}`} />
             Object Snap: {snapToObject ? 'ON' : 'OFF'}
           </button>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowWireSettings((prev) => !prev)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider cursor-pointer shadow-lg ${
+                showWireSettings
+                  ? 'bg-gold/10 border-gold/30 text-gold hover:bg-gold/20'
+                  : 'bg-surface border-line text-ink-soft hover:bg-surface'
+              }`}
+              title="Adjust wire thickness"
+            >
+              <Settings size={13} />
+              Wire Thickness
+            </button>
+
+            {showWireSettings && (
+              <div
+                className="absolute bottom-full left-0 mb-2 bg-surface border border-line rounded-xl shadow-lg p-4 w-56"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black uppercase text-ink-soft tracking-wider">
+                    Wire Thickness
+                  </span>
+                  <span className="text-xs font-bold text-ink font-mono">{wireThickness.toFixed(1)}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={6}
+                  step={0.5}
+                  value={wireThickness}
+                  onChange={(e) => setWireThickness(parseFloat(e.target.value))}
+                  className="w-full accent-gold cursor-pointer"
+                />
+                <div className="flex justify-between text-[9px] text-ink-soft font-bold uppercase mt-1">
+                  <span>Thin</span>
+                  <span>Thick</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

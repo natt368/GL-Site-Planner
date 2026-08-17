@@ -1,9 +1,14 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { exec } from "child_process";
+import { exec, execFile } from "child_process";
 import { createServer as createViteServer } from "vite";
 import { generateBinDatabase } from "./scripts/parseExcel.js";
+
+// The AI Studio "push to GitHub" workflow below shells out with a token that
+// has write access to the repo. It must never be reachable from a deployed,
+// publicly-accessible instance of this server — only from local/dev tooling.
+const isDevServer = process.env.NODE_ENV !== "production";
 
 async function startServer() {
   const app = express();
@@ -146,8 +151,18 @@ async function startServer() {
     return res.status(404).json({ success: false, error: "Specs database not found" });
   });
 
+  // Dev-only middleware guard: these endpoints shell out to git with a
+  // write-access token, so they must be inert unless we're running as local
+  // AI Studio dev tooling.
+  const requireDevServer = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (!isDevServer) {
+      return res.status(404).json({ success: false, error: "Not available" });
+    }
+    next();
+  };
+
   // Get current git status
-  app.get("/api/github/status", (req, res) => {
+  app.get("/api/github/status", requireDevServer, (req, res) => {
     exec("git status --porcelain", (error, stdout, stderr) => {
       if (error) {
         return res.status(500).json({ success: false, error: error.message });
@@ -162,12 +177,15 @@ async function startServer() {
   });
 
   // Push local changes to GitHub
-  app.post("/api/github/push", (req, res) => {
+  app.post("/api/github/push", requireDevServer, (req, res) => {
     const { commitMessage } = req.body;
-    const message = commitMessage ? commitMessage.replace(/"/g, '\\"') : "Sync from AI Studio Manual Button";
+    const message = typeof commitMessage === "string" && commitMessage.trim()
+      ? commitMessage
+      : "Sync from AI Studio Manual Button";
 
-    // Run sync.sh helper script to commit and push
-    exec(`./sync.sh "${message}"`, (error, stdout, stderr) => {
+    // Use execFile (no shell) so the commit message is passed as a literal
+    // argument and can never be interpreted as shell syntax.
+    execFile("./sync.sh", [message], (error, stdout, stderr) => {
       if (error) {
         console.error(`Error running sync.sh: ${error.message}`);
         return res.status(500).json({

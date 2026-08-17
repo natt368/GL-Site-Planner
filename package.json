@@ -1,7 +1,8 @@
 {
-  "name": "react-example",
+  "name": "grainlink-site-planner",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Unified engineering and site design suite for planning grain bin storage layouts and cable arrangements.",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -11,7 +12,6 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",

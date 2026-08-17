@@ -4,13 +4,13 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Project, Yard, Asset, BinAsset, generateProjectId } from './types';
+import { Project, Yard, Asset, BinAsset, generateProjectId, generateAssetId } from './types';
 import { DashboardView } from './components/DashboardView';
 import { SitePlannerView } from './components/SitePlannerView';
 import { LandingBackground } from './components/LandingBackground';
 import { CableEstimatorView } from './components/CableEstimatorView';
 import { BinSpecsView } from './components/BinSpecsView';
-import { generateUnifiedPDF } from './utils/pdfGenerator';
+import { useDialogs } from './components/ui/DialogProvider';
 import { LayoutDashboard, Map as MapIcon, Download, Loader2, Plus, FolderOpen, Cloud, RefreshCw, AlertTriangle, Play, ChevronRight, FileCode, LogOut, Search, X, Github, GitBranch, Home, FileText, Compass, Copy, Check, Pencil } from 'lucide-react';
 import {
   initAuth,
@@ -129,6 +129,8 @@ function syncProjectCables(next: Project, prev: Project): Project {
 }
 
 export default function App() {
+  const { toast } = useDialogs();
+
   // Load saved project from localStorage upon app initialization
   const [project, setProject] = useState<Project>(() => {
     try {
@@ -166,18 +168,31 @@ export default function App() {
   // Undo history stack state
   const [history, setHistory] = useState<Project[]>([]);
 
+  // A continuous gesture (dragging an asset, holding a key down, typing in a
+  // text field) fires many rapid updates in a row. Pushing a history entry
+  // for every single one of them means Undo only ever rewinds a pixel or a
+  // keystroke instead of the whole gesture. Coalesce updates that land
+  // within COALESCE_WINDOW_MS of the previous push into one history entry.
+  const COALESCE_WINDOW_MS = 600;
+  const lastHistoryPushRef = useRef<number>(0);
+
   const updateProjectWithHistory = (updater: Project | ((prev: Project) => Project)) => {
     setProject((prev) => {
       let next = typeof updater === 'function' ? updater(prev) : updater;
       next = syncProjectCables(next, prev);
       if (JSON.stringify(prev) !== JSON.stringify(next)) {
-        setHistory((prevHistory) => {
-          const updated = [...prevHistory, prev];
-          if (updated.length > 50) {
-            updated.shift();
-          }
-          return updated;
-        });
+        const now = Date.now();
+        const shouldCoalesce = now - lastHistoryPushRef.current < COALESCE_WINDOW_MS;
+        lastHistoryPushRef.current = now;
+        if (!shouldCoalesce) {
+          setHistory((prevHistory) => {
+            const updated = [...prevHistory, prev];
+            if (updated.length > 50) {
+              updated.shift();
+            }
+            return updated;
+          });
+        }
       }
       return next;
     });
@@ -612,7 +627,7 @@ export default function App() {
         let loadedProject: Project;
 
         if (Array.isArray(imported)) {
-          const mainYardId = Date.now();
+          const mainYardId = generateAssetId();
           loadedProject = {
             id: generateProjectId(),
             name: 'Imported Legacy Layout',
@@ -622,7 +637,7 @@ export default function App() {
             yards: [{ id: mainYardId, name: 'Main Yard', bins: imported }],
           };
         } else if (imported && typeof imported === 'object' && imported.bins && !imported.yards) {
-          const mainYardId = Date.now();
+          const mainYardId = generateAssetId();
           loadedProject = {
             id: imported.id || generateProjectId(),
             driveFileId: imported.driveFileId,
@@ -643,7 +658,7 @@ export default function App() {
             yards: imported.yards || [],
           };
         } else {
-          alert('Invalid project format. Make sure the JSON file is a valid GrainLink layout.');
+          toast('Invalid project format. Make sure the JSON file is a valid GrainLink layout.', 'error');
           return;
         }
 
@@ -661,7 +676,7 @@ export default function App() {
             }
             if (type === 'bin') {
               return {
-                id: bin.id || Date.now() + Math.random(),
+                id: bin.id || generateAssetId(),
                 type: 'bin',
                 name: bin.name || 'Unnamed Bin',
                 notes: bin.notes || '',
@@ -678,7 +693,7 @@ export default function App() {
               } as any;
             } else if (type === 'zone') {
               return {
-                id: bin.id || Date.now() + Math.random(),
+                id: bin.id || generateAssetId(),
                 type: 'zone',
                 name: bin.name || 'Zone',
                 notes: bin.notes || '',
@@ -689,7 +704,7 @@ export default function App() {
               } as any;
             } else {
               return {
-                id: bin.id || Date.now() + Math.random(),
+                id: bin.id || generateAssetId(),
                 type: type,
                 name: bin.name || '',
                 notes: bin.notes || '',
@@ -702,7 +717,7 @@ export default function App() {
         }));
 
         if (loadedProject.yards.length === 0) {
-          const defId = Date.now();
+          const defId = generateAssetId();
           loadedProject.yards.push({ id: defId, name: 'Home Yard', bins: [] });
           loadedProject.activeYardId = defId;
         }
@@ -710,7 +725,7 @@ export default function App() {
         setProject(loadedProject);
         navigateTo(false, 'planner');
       } catch (err) {
-        alert('Failed to read the JSON file. Ensure it is a valid JSON file.');
+        toast('Failed to read the JSON file. Ensure it is a valid JSON file.', 'error');
       }
     };
     reader.readAsText(file);
@@ -735,8 +750,17 @@ export default function App() {
     navigateTo(false, 'estimator');
   };
 
-  const triggerPDFExport = () => {
-    generateUnifiedPDF(project, { setLoading, setLoadingText }, { includeAssetDirectory });
+  const triggerPDFExport = async () => {
+    // jsPDF/jspdf-autotable/html2canvas (~250KB) are only needed for this
+    // one action, so they're loaded on demand instead of in the main bundle.
+    setLoading(true);
+    setLoadingText('Loading report generator...');
+    const { generateUnifiedPDF } = await import('./utils/pdfGenerator');
+    generateUnifiedPDF(
+      project,
+      { setLoading, setLoadingText, onError: (message) => toast(message, 'error') },
+      { includeAssetDirectory }
+    );
   };
 
   return (

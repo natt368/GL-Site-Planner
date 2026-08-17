@@ -118,3 +118,12 @@ export function generateProjectId(): string {
   const num = Math.floor(100000 + Math.random() * 900000);
   return `PRJ-${num}`;
 }
+
+// Monotonic counter guarantees a unique id even when several assets are
+// created within the same millisecond (fast clicks, batch add/duplicate),
+// which a bare `Date.now()` cannot.
+let assetIdCounter = 0;
+export function generateAssetId(): number {
+  assetIdCounter += 1;
+  return Date.now() * 1000 + (assetIdCounter % 1000);
+}

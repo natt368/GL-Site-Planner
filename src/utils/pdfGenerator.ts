@@ -6,27 +6,17 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Project, BinAsset, Asset } from '../types';
+import { computeBinCapacityBushels } from './binCapacity';
+import { getCableRecommendation } from './cableRecommendation';
 
 export interface PDFGeneratorCallbacks {
   setLoading: (loading: boolean) => void;
   setLoadingText: (text: string) => void;
+  onError?: (message: string) => void;
 }
 
 export interface PDFGeneratorOptions {
   includeAssetDirectory?: boolean;
-}
-
-export function getCableRecommendation(diameterStr: string) {
-  const d = parseFloat(diameterStr) || 0;
-  if (d < 24) {
-    return { center: 1, radius: 0 };
-  } else if (d <= 35) {
-    return { center: 0, radius: 3 };
-  } else if (d <= 41) {
-    return { center: 1, radius: 3 };
-  } else {
-    return { center: 1, radius: 4 };
-  }
 }
 
 /**
@@ -332,7 +322,7 @@ export async function generateUnifiedPDF(
   callbacks: PDFGeneratorCallbacks,
   options?: PDFGeneratorOptions
 ) {
-  const { setLoading, setLoadingText } = callbacks;
+  const { setLoading, setLoadingText, onError } = callbacks;
   setLoading(true);
   setLoadingText('Initializing Unified Suite PDF Generation...');
 
@@ -361,13 +351,7 @@ export async function generateUnifiedPDF(
       y.bins.forEach((b) => {
         if (b.type === 'bin') {
           totalBins++;
-          const D = parseFloat(b.diameter) || 0;
-          const H = parseFloat(b.totalHeight) || 0;
-          const E = parseFloat(b.eaveHeight) || 0;
-          const F = parseFloat(b.floorThick) || 0;
-          totalCap += Math.round(
-            Math.PI * Math.pow(D / 2, 2) * (Math.max(0, E - F) + (H - E) / 3) * 0.80356
-          );
+          totalCap += computeBinCapacityBushels(b as BinAsset);
           const rec = getCableRecommendation(b.diameter);
           totalCables += rec.center + rec.radius;
         } else if (b.type === 'zone') {
@@ -930,13 +914,7 @@ export async function generateUnifiedPDF(
           }
 
           const binB = b as BinAsset;
-          const D = parseFloat(binB.diameter) || 0;
-          const H = parseFloat(binB.totalHeight) || 0;
-          const E = parseFloat(binB.eaveHeight) || 0;
-          const F = parseFloat(binB.floorThick) || 0;
-          const cap = Math.round(
-            Math.PI * Math.pow(D / 2, 2) * (Math.max(0, E - F) + (H - E) / 3) * 0.80356
-          );
+          const cap = computeBinCapacityBushels(binB);
           const rec = getCableRecommendation(binB.diameter);
 
           return [
@@ -1006,7 +984,11 @@ export async function generateUnifiedPDF(
     setLoading(false);
   } catch (err) {
     console.error(err);
-    alert('An error occurred while compiling the unified PDF.');
+    if (onError) {
+      onError('An error occurred while compiling the unified PDF.');
+    } else {
+      alert('An error occurred while compiling the unified PDF.');
+    }
     setLoading(false);
   }
 }

@@ -5,7 +5,8 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Project, Yard, Asset, BinAsset, Point, MeasurementLine } from '../types';
-import { getCableRecommendation } from '../utils/pdfGenerator';
+import { getCableRecommendation } from '../utils/cableRecommendation';
+import { computeBinCapacityBushels } from '../utils/binCapacity';
 import { ArrowLeft, RefreshCw, Trash2, Eye, EyeOff } from 'lucide-react';
 
 interface CableEstimatorViewProps {
@@ -85,12 +86,18 @@ export const CableEstimatorView: React.FC<CableEstimatorViewProps> = ({
   const lw = Math.max(20, wp * 0.1);
   const cw = Math.max(16, wp * 0.12); // Hopper discharge width
 
-  // Compute bushels capacity
-  const bushels = Math.round(
-    isHopper
-      ? Math.PI * Math.pow(D / 2, 2) * (E + (H - E) / 3 + C / 3) * 0.80356
-      : Math.PI * Math.pow(D / 2, 2) * (Math.max(0, E - F) + (H - E) / 3) * 0.80356
-  );
+  // Compute bushels capacity (shared formula — must match the Dashboard and
+  // PDF report so the same bin never shows three different numbers). Uses
+  // the same D/H/E/F/C values as the diagram above (with their fallback
+  // defaults applied) so the number always matches what's drawn.
+  const bushels = computeBinCapacityBushels({
+    diameter: D.toString(),
+    totalHeight: H.toString(),
+    eaveHeight: E.toString(),
+    floorThick: F.toString(),
+    isHopper,
+    hopperConeHeight: C.toString(),
+  } as BinAsset);
 
   // Compute cable recommendations
   const cables = getCableRecommendation(D.toString());
@@ -518,7 +525,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
       const coords = getSVGCoords(e.clientX, e.clientY);
       const { x, y } = getSnappedCoords(coords.x, coords.y);
 
-      const measurements = activeBin.measurements.map((m, idx) => {
+      const measurements = (activeBin.measurements || []).map((m, idx) => {
         if (idx !== draggingPoint.lineIdx) return m;
         
         let finalX = x;
@@ -550,7 +557,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
       const dx = coords.x - draggingLine.startCoords.x;
       const dy = coords.y - draggingLine.startCoords.y;
 
-      const measurements = activeBin.measurements.map((line, idx) => {
+      const measurements = (activeBin.measurements || []).map((line, idx) => {
         if (idx !== draggingLine.lineIdx) return line;
 
         let newP1X = draggingLine.originalP1.x + dx;
@@ -1018,6 +1025,7 @@ const mountHeightFt = (gy - topPoint.y) / pixelsPerFoot;
             onMouseUp={handleSVGMouseUp}
             onMouseLeave={handleSVGMouseLeave}
             onWheel={handleSVGWheel}
+            onContextMenu={(e) => e.preventDefault()}
             className="touch-none bg-[#F7F6F2] block h-full w-full"
             style={{ cursor: measureToolActive ? 'crosshair' : 'grab' }}
           >

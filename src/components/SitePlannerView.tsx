@@ -4,8 +4,8 @@
  */
 
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
-import { Project, Yard, Asset, BinAsset, MarkerAsset, ZoneAsset, BinSpecModel, WireConnection } from '../types';
-import { getCableRecommendation } from '../utils/pdfGenerator';
+import { Project, Yard, Asset, BinAsset, MarkerAsset, ZoneAsset, BinSpecModel, WireConnection, generateAssetId } from '../types';
+import { getCableRecommendation } from '../utils/cableRecommendation';
 import { BIN_DATABASE } from '../data/binDatabase';
 import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search } from 'lucide-react';
 
@@ -25,6 +25,32 @@ const BIN_SIZES = [18, 24, 30, 36, 42, 48, 50];
 
 function escapeRegExp(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Picks the next free "<prefix><n>" label by scanning the highest existing
+// numeric suffix rather than counting current items, so a name freed up by
+// deleting an asset is never handed out to a new one that collides with a
+// name still in use elsewhere (e.g. after deleting GB2, a fresh bin should
+// not also become GB2 if a later GB3 still exists).
+function nextNumberedName(existingNames: string[], prefix: string): string {
+  const pattern = new RegExp(`^${escapeRegExp(prefix)}(\\d+)$`);
+  let max = 0;
+  for (const name of existingNames) {
+    const match = name.match(pattern);
+    if (match) max = Math.max(max, parseInt(match[1], 10));
+  }
+  return `${prefix}${max + 1}`;
+}
+
+// Finds the closest real bin spec for a given diameter so quick-add presets
+// get plausible, diameter-appropriate eave/total heights and ring counts
+// instead of a single fixed size applied to every diameter.
+function findNearestBinSpec(diameterFt: number): BinSpecModel | undefined {
+  const flatBottomModels = BIN_DATABASE.filter((m) => !m.isHopper && m.diameterFt > 0);
+  if (flatBottomModels.length === 0) return undefined;
+  return [...flatBottomModels].sort(
+    (a, b) => Math.abs(a.diameterFt - diameterFt) - Math.abs(b.diameterFt - diameterFt)
+  )[0];
 }
 
 /**
@@ -88,7 +114,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   const [snapToObject, setSnapToObject] = useState<boolean>(true);
 
   // Hovered bin state for tooltip info
-  const [hoveredBin, setHoveredBin] = useState<any | null>(null);
+  const [hoveredBin, setHoveredBin] = useState<Asset | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
 
   // State for creating wire connections
@@ -603,7 +629,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
     // Draw Compass
     drawCompass(ctx, dimensions.width - 60, 60);
-  }, [dimensions, view, activeYard, selectedAssetId, selectedAssetIds, selectionBox, wireThickness, hoveredWireId]);
+  }, [dimensions, view, activeYard, selectedAssetId, selectedAssetIds, selectionBox, wireThickness, hoveredWireId, wiringState, mouseWorldPos, snapToObject]);
 
   const drawCompass = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
     ctx.save();
@@ -822,7 +848,10 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     if (!activeYard) return;
 
     const worldCenter = screenToWorld(dimensions.width / 2, dimensions.height / 2);
-    const binCountInYard = activeYard.bins.filter((b) => b.type === 'bin').length + 1;
+    const binName = nextNumberedName(
+      activeYard.bins.filter((b) => b.type === 'bin').map((b) => b.name),
+      'GB'
+    );
 
     let centerCable = '';
     let radiusCable = '';
@@ -847,9 +876,9 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     }
 
     const newBin: BinAsset = {
-      id: Date.now(),
+      id: generateAssetId(),
       type: 'bin',
-      name: `GB${binCountInYard}`,
+      name: binName,
       manufacturer: model.manufacturer,
       modelNumber: model.modelNumber,
       diameter: model.diameterFt.toString(),
@@ -882,16 +911,27 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     if (!activeYard) return;
 
     const worldCenter = screenToWorld(dimensions.width / 2, dimensions.height / 2);
-    const binCountInYard = activeYard.bins.filter((b) => b.type === 'bin').length + 1;
+    const binName = nextNumberedName(
+      activeYard.bins.filter((b) => b.type === 'bin').map((b) => b.name),
+      'GB'
+    );
+
+    // Base quick-add defaults on the closest real bin spec for this
+    // diameter so an 18' preset isn't given the same 32'/42' geometry as a
+    // 50' preset.
+    const nearestSpec = findNearestBinSpec(diameter);
+    const rings = nearestSpec ? nearestSpec.rings : Math.max(4, Math.round(diameter / 5));
+    const eaveHeight = nearestSpec ? Math.round(nearestSpec.eaveHeightFt) : Math.round(diameter * 0.65 + 8);
+    const totalHeight = nearestSpec ? Math.round(nearestSpec.totalHeightFt) : eaveHeight + Math.round(diameter * 0.28);
 
     const newBin: BinAsset = {
-      id: Date.now(),
+      id: generateAssetId(),
       type: 'bin',
-      name: `GB${binCountInYard}`,
+      name: binName,
       diameter: diameter.toString(),
-      rings: Math.round(32 / 4).toString(),
-      eaveHeight: '32',
-      totalHeight: '42',
+      rings: rings.toString(),
+      eaveHeight: eaveHeight.toString(),
+      totalHeight: totalHeight.toString(),
       floorThick: '1.5',
       notes: '',
       measurements: [],
@@ -920,12 +960,15 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
         : markerType === 'junction-box'
         ? 'Junction Box'
         : 'Fan Control';
-    const count = activeYard.bins.filter((b) => b.type === markerType).length + 1;
+    const markerName = nextNumberedName(
+      activeYard.bins.filter((b) => b.type === markerType).map((b) => b.name),
+      `${labelPrefix} `
+    );
 
     const newMarker: MarkerAsset = {
-      id: Date.now(),
+      id: generateAssetId(),
       type: markerType,
-      name: `${labelPrefix} ${count}`,
+      name: markerName,
       diameter: (markerType === 'junction-box' || markerType === 'fan-control') ? '6' : '5',
       notes: '',
       x: snapToGrid ? Math.round(worldCenter.x / GRID_SIZE) * GRID_SIZE : worldCenter.x,
@@ -946,7 +989,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
     const worldCenter = screenToWorld(dimensions.width / 2, dimensions.height / 2);
     const newZone: ZoneAsset = {
-      id: Date.now(),
+      id: generateAssetId(),
       type: 'zone',
       name: '',
       width: '60',
@@ -998,12 +1041,18 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     const binsToDup = activeYard.bins.filter((b) => idsToDuplicate.includes(b.id));
     if (binsToDup.length === 0) return;
 
-    const binCountInYard = activeYard.bins.filter((b) => b.type === 'bin').length + 1;
+    const existingGBNums = activeYard.bins
+      .filter((b) => b.type === 'bin')
+      .map((b) => {
+        const match = b.name.match(/^GB(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      });
+    const maxGBNum = existingGBNums.length > 0 ? Math.max(...existingGBNums) : 0;
 
     const newBins = binsToDup.map((b, index) => {
       let newName = '';
       if (b.type === 'bin') {
-        newName = `GB${binCountInYard + index}`;
+        newName = `GB${maxGBNum + index + 1}`;
       } else if (b.type === 'chester-x' || b.type === 'chester-x1' || b.type === 'junction-box' || b.type === 'fan-control') {
         const type = b.type;
         const prefix = 
@@ -1049,7 +1098,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
       return {
         ...JSON.parse(JSON.stringify(b)),
-        id: Date.now() + index,
+        id: generateAssetId(),
         x: b.x + 40,
         y: b.y + 40,
         name: newName,
@@ -1065,7 +1114,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
     const newIds = newBins.map((b) => b.id);
     handleSetSelectedAssetIds(newIds);
-  }, [selectedAssetId, selectedAssetIds, project, activeYard, onUpdateProject]);
+  }, [selectedAssetId, selectedAssetIds, activeYard, onUpdateProject]);
 
   const handleDistributeAssets = useCallback(
     (mode: 'horizontal' | 'vertical') => {
@@ -1234,7 +1283,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     // value here would silently break the whole diagram, so guard it here
     // rather than only hinting at a minimum via the input's `min` attribute
     // (which doesn't actually block a typed value in most browsers).
-    const dimensionFields = ['diameter', 'eaveHeight', 'totalHeight'];
+    const dimensionFields = ['diameter', 'eaveHeight', 'totalHeight', 'width', 'height'];
     let safeValue = value;
     if (dimensionFields.includes(key)) {
       const parsed = parseFloat(value);
@@ -1277,7 +1326,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
         if (y.id !== prev.activeYardId) return y;
         const currentWires = y.wires || [];
         const newWire = {
-          id: Date.now(),
+          id: generateAssetId(),
           fromId,
           toId,
           type,
@@ -1290,32 +1339,6 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     }));
 
     setWiringState(null);
-  };
-
-  // Sync Shared Cable Lengths across bins with the same specifications
-  const syncSharedCableLengths = (sourceBin: BinAsset) => {
-    if (!sourceBin.centerCable && !sourceBin.radiusCable) return;
-    onUpdateProject((prev) => ({
-      ...prev,
-      yards: prev.yards.map((y) => ({
-        ...y,
-        bins: y.bins.map((b) => {
-          if (
-            b.type === 'bin' &&
-            b.id !== sourceBin.id &&
-            b.eaveHeight === sourceBin.eaveHeight &&
-            b.totalHeight === sourceBin.totalHeight
-          ) {
-            return {
-              ...b,
-              centerCable: sourceBin.centerCable,
-              radiusCable: sourceBin.radiusCable,
-            };
-          }
-          return b;
-        }),
-      })),
-    }));
   };
 
   const getAssetsInSelectionBox = (box: { startX: number; startY: number; currentX: number; currentY: number }) => {
@@ -1804,7 +1827,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
     const clickedBin = [...activeYard.bins].reverse().find((b) => {
       if (b.type !== 'bin') return false;
-      const r = (parseFloat(b.diameter) / 2) * BASE_SCALE;
+      const r = ((parseFloat(b.diameter) || 36) / 2) * BASE_SCALE;
       return Math.sqrt(Math.pow(worldPos.x - b.x, 2) + Math.pow(worldPos.y - b.y, 2)) < r;
     });
 
@@ -2213,13 +2236,28 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                         type="text"
                         value={propModelSearchText}
                         onChange={(e) => {
-                          const val = e.target.value;
-                          setPropModelSearchText(val);
+                          // Only track the in-progress text here — applying a
+                          // spec on every keystroke means a transient
+                          // substring match (e.g. typing "1500" on the way to
+                          // "1500XL") silently overwrites the bin's real
+                          // dimensions. Committing happens on blur/Enter, or
+                          // immediately when a suggestion is explicitly
+                          // clicked below.
+                          setPropModelSearchText(e.target.value);
                           setIsPropModelSuggestionsOpen(true);
-                          handleApplyModelNumber(val);
                         }}
                         onFocus={() => setIsPropModelSuggestionsOpen(true)}
-                        onBlur={() => setTimeout(() => setIsPropModelSuggestionsOpen(false), 200)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleApplyModelNumber(propModelSearchText);
+                            setIsPropModelSuggestionsOpen(false);
+                            (e.target as HTMLInputElement).blur();
+                          }
+                        }}
+                        onBlur={() => {
+                          handleApplyModelNumber(propModelSearchText);
+                          setTimeout(() => setIsPropModelSuggestionsOpen(false), 200);
+                        }}
                         placeholder="Type model"
                         className="w-full bg-surface border border-gold rounded-lg p-2.5 text-ink focus:ring-2 focus:ring-gold focus:border-gold outline-none text-sm font-bold shadow-sm"
                       />

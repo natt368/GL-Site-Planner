@@ -20,3 +20,30 @@
   --font-sans: "Inter", sans-serif;
   --font-data: "IBM Plex Mono", monospace;
 }
+
+@keyframes gl-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes gl-dialog-in {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes gl-toast-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.gl-animate-backdrop {
+  animation: gl-fade-in 0.15s ease-out;
+}
+
+.gl-animate-dialog {
+  animation: gl-dialog-in 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gl-animate-toast {
+  animation: gl-toast-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}

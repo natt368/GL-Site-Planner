@@ -4,9 +4,10 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Project, BinAsset, BinSpecModel } from '../types';
+import { Project, BinAsset, BinSpecModel, generateAssetId } from '../types';
 import { BIN_DATABASE, MANUFACTURERS, BIN_CATEGORIES } from '../data/binDatabase';
-import { getCableRecommendation } from '../utils/pdfGenerator';
+import { getCableRecommendation } from '../utils/cableRecommendation';
+import { useDialogs } from './ui/DialogProvider';
 import {
   Search,
   Plus,
@@ -34,6 +35,8 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
   onSwitchTab,
   activeBinId,
 }) => {
+  const { toast } = useDialogs();
+
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedManufacturer, setSelectedManufacturer] = useState('All Manufacturers');
@@ -42,6 +45,16 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
 
   // Custom spec modal state
   const [showCustomModal, setShowCustomModal] = useState(false);
+
+  useEffect(() => {
+    if (!showCustomModal) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowCustomModal(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showCustomModal]);
+
   const [customSpec, setCustomSpec] = useState({
     manufacturer: 'Custom',
     modelNumber: '',
@@ -202,11 +215,11 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
   const handleSaveCustomModel = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customSpec.modelNumber.trim()) {
-      alert('Please enter a model number.');
+      toast('Please enter a model number.', 'error');
       return;
     }
     const newModel: BinSpecModel = {
-      id: `custom-${Date.now()}`,
+      id: `custom-${generateAssetId()}`,
       manufacturer: customSpec.manufacturer || 'Custom',
       modelNumber: customSpec.modelNumber,
       fullName: `${customSpec.manufacturer} ${customSpec.modelNumber} ${customSpec.category}`,
@@ -229,7 +242,7 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
     setLocalDatabase((prev) => [newModel, ...prev]);
     setSelectedSpecModel(newModel);
     setShowCustomModal(false);
-    alert(`Successfully added ${newModel.fullName} to the library!`);
+    toast(`Successfully added ${newModel.fullName} to the library!`, 'success');
   };
 
   // Apply selected spec to active bin
@@ -268,7 +281,7 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
       })),
     }));
 
-    alert(`Applied ${model.fullName} dimensions to active bin #${activeBin?.name || activeBinId}!`);
+    toast(`Applied ${model.fullName} dimensions to active bin #${activeBin?.name || activeBinId}!`, 'success');
   };
 
   // Add a new bin unit to project
@@ -276,7 +289,7 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
     const activeYardId = project.activeYardId || project.yards[0]?.id;
     if (!activeYardId) return;
 
-    const newId = Date.now();
+    const newId = generateAssetId();
     const newBinName = `${model.manufacturer} ${model.modelNumber}`;
     const verified = getVerifiedForModel(model.id);
 
@@ -315,7 +328,7 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
       return { ...prev, yards: updatedYards };
     });
 
-    alert(`Added ${model.fullName} to your project yard!`);
+    toast(`Added ${model.fullName} to your project yard!`, 'success');
   };
 
   return (
@@ -666,8 +679,17 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
 
       {/* Add Custom Spec Modal */}
       {showCustomModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm p-4">
-          <div className="bg-surface border border-line rounded-2xl p-6 max-w-lg w-full space-y-4 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm p-4 gl-animate-backdrop"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setShowCustomModal(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="bg-surface border border-line rounded-2xl p-6 max-w-lg w-full space-y-4 shadow-2xl gl-animate-dialog max-h-[90vh] overflow-y-auto"
+          >
             <div className="flex items-center justify-between border-b border-line pb-3">
               <h3 className="text-base font-extrabold text-ink flex items-center gap-2">
                 <Plus size={18} className="text-gold" />

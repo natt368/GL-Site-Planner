@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useRef, useState, useEffect } from 'react';
-import { Project, Yard, Asset, BinAsset, generateProjectId } from '../types';
-import { getCableRecommendation } from '../utils/pdfGenerator';
+import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import { Project, Yard, Asset, BinAsset, generateProjectId, generateAssetId } from '../types';
+import { getCableRecommendation } from '../utils/cableRecommendation';
+import { computeBinCapacityBushels } from '../utils/binCapacity';
 import { Plus, Edit2, Trash2, FolderOpen, Save, MapPin, Cloud, LogOut, RefreshCw, AlertTriangle, Check, Download, FileText, Copy } from 'lucide-react';
 import {
   initAuth,
@@ -16,6 +17,7 @@ import {
   loadProjectFromDrive,
   DriveFile
 } from '../utils/googleDrive';
+import { useDialogs } from './ui/DialogProvider';
 
 interface DashboardViewProps {
   project: Project;
@@ -37,6 +39,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSaveComplete,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { confirm, promptText, toast } = useDialogs();
 
   const [user, setUser] = useState<any>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -45,6 +48,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [isSavingDrive, setIsSavingDrive] = useState(false);
   const [driveSuccessMessage, setDriveSuccessMessage] = useState<string | null>(null);
   const [driveError, setDriveError] = useState<string | null>(null);
+
+  // Local draft buffer for Project Notes: committing to global project
+  // state (and its undo history) on every keystroke made typing sluggish on
+  // larger projects, since it re-runs the stats aggregation above and
+  // re-renders the whole dashboard tree. Debounce the commit instead.
+  const [notesDraft, setNotesDraft] = useState(project.notes || '');
+  const notesDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setNotesDraft(project.notes || '');
+    // Only re-sync when a *different* project is loaded, not on every
+    // notes change, otherwise this would fight the debounce below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project.id]);
+
+  useEffect(() => {
+    return () => {
+      if (notesDebounceRef.current) clearTimeout(notesDebounceRef.current);
+    };
+  }, []);
+
+  const handleNotesChange = useCallback((value: string) => {
+    setNotesDraft(value);
+    if (notesDebounceRef.current) clearTimeout(notesDebounceRef.current);
+    notesDebounceRef.current = setTimeout(() => {
+      onUpdateProject((prev) => ({ ...prev, notes: value }));
+    }, 400);
+  }, [onUpdateProject]);
 
   useEffect(() => {
     const unsubscribe = initAuth(
@@ -73,12 +104,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     } catch (err: any) {
       console.error(err);
       setDriveError(err.message || 'Failed to list designs from Google Drive');
-      if (err.message?.includes('expired') || err.message?.includes('re-authorize') || err.message?.includes('401') || err.status === 401) {
-        logout().catch(console.error);
-        setUser(null);
-        setAccessToken(null);
-        setDriveFiles([]);
-      }
+      if (isAuthError(err)) handleAuthFailure();
     } finally {
       setIsLoadingDrive(false);
     }
@@ -110,34 +136,52 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
-  const handleSaveToDrive = async () => {
-    if (!accessToken) return;
-    const confirmed = window.confirm(`Save design "${project.name}" to the connected Google Drive folder?`);
+  // Google's access tokens expire after ~1hr; the API surfaces that a few
+  // different ways depending on which call failed, so this is the one place
+  // that needs to recognize all of them.
+  const isAuthError = (err: any): boolean =>
+    err?.message?.includes('expired') ||
+    err?.message?.includes('re-authorize') ||
+    err?.message?.includes('401') ||
+    err?.status === 401;
+
+  const handleAuthFailure = () => {
+    logout().catch(console.error);
+    setUser(null);
+    setAccessToken(null);
+    setDriveFiles([]);
+  };
+
+  const saveToDrive = async (token: string) => {
+    const confirmed = await confirm(`Save design "${project.name}" to the connected Google Drive folder?`, {
+      title: 'Save to Google Drive',
+      confirmLabel: 'Save',
+    });
     if (!confirmed) return;
 
     setIsSavingDrive(true);
     setDriveError(null);
     setDriveSuccessMessage(null);
     try {
-      const savedFileId = await saveProjectToDrive(accessToken, project);
+      const savedFileId = await saveProjectToDrive(token, project);
       if (savedFileId && project.driveFileId !== savedFileId) {
         onUpdateProject((prev) => ({ ...prev, driveFileId: savedFileId }));
       }
       setDriveSuccessMessage('Saved to Google Drive successfully!');
       onSaveComplete?.();
       setTimeout(() => setDriveSuccessMessage(null), 4000);
-      fetchDriveFiles(accessToken);
+      fetchDriveFiles(token);
     } catch (err: any) {
       setDriveError(err.message || 'Failed to save to Google Drive');
-      if (err.message?.includes('expired') || err.message?.includes('re-authorize') || err.message?.includes('401') || err.status === 401) {
-        logout().catch(console.error);
-        setUser(null);
-        setAccessToken(null);
-        setDriveFiles([]);
-      }
+      if (isAuthError(err)) handleAuthFailure();
     } finally {
       setIsSavingDrive(false);
     }
+  };
+
+  const handleSaveToDrive = async () => {
+    if (!accessToken) return;
+    await saveToDrive(accessToken);
   };
 
   const handleBackupToDriveClick = async () => {
@@ -146,51 +190,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       setDriveError(null);
       try {
         const result = await googleSignIn();
-        if (result) {
-          setUser(result.user);
-          setAccessToken(result.accessToken);
-          currentToken = result.accessToken;
-        } else {
-          return;
-        }
+        if (!result) return;
+        setUser(result.user);
+        setAccessToken(result.accessToken);
+        currentToken = result.accessToken;
       } catch (err: any) {
         setDriveError(err.message || 'Google Drive connection failed');
         return;
       }
     }
 
-    if (!currentToken) return;
-    const confirmed = window.confirm(`Save design "${project.name}" to the connected Google Drive folder?`);
-    if (!confirmed) return;
-
-    setIsSavingDrive(true);
-    setDriveError(null);
-    setDriveSuccessMessage(null);
-    try {
-      const savedFileId = await saveProjectToDrive(currentToken, project);
-      if (savedFileId && project.driveFileId !== savedFileId) {
-        onUpdateProject((prev) => ({ ...prev, driveFileId: savedFileId }));
-      }
-      setDriveSuccessMessage('Saved to Google Drive successfully!');
-      onSaveComplete?.();
-      setTimeout(() => setDriveSuccessMessage(null), 4000);
-      fetchDriveFiles(currentToken);
-    } catch (err: any) {
-      setDriveError(err.message || 'Failed to save to Google Drive');
-      if (err.message?.includes('expired') || err.message?.includes('re-authorize') || err.message?.includes('401') || err.status === 401) {
-        logout().catch(console.error);
-        setUser(null);
-        setAccessToken(null);
-        setDriveFiles([]);
-      }
-    } finally {
-      setIsSavingDrive(false);
-    }
+    await saveToDrive(currentToken);
   };
 
   const handleLoadFromDrive = async (fileId: string, fileName: string) => {
     if (!accessToken) return;
-    const confirmed = window.confirm(`Load design "${fileName}" from Google Drive? This will replace your current unsaved workspace.`);
+    const confirmed = await confirm(`Load design "${fileName}" from Google Drive? This will replace your current unsaved workspace.`, {
+      title: 'Load Design',
+      confirmLabel: 'Load',
+    });
     if (!confirmed) return;
 
     setIsLoadingDrive(true);
@@ -206,64 +224,84 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       setTimeout(() => setDriveSuccessMessage(null), 4000);
     } catch (err: any) {
       setDriveError(err.message || 'Failed to load design');
-      if (err.message?.includes('expired') || err.message?.includes('re-authorize') || err.message?.includes('401') || err.status === 401) {
-        logout().catch(console.error);
-        setUser(null);
-        setAccessToken(null);
-        setDriveFiles([]);
-      }
+      if (isAuthError(err)) handleAuthFailure();
     } finally {
       setIsLoadingDrive(false);
     }
   };
 
-  // Compute stats
-  const totalYards = project.yards.length;
-  let totalCapacity = 0;
-  let totalChesterX = 0;
-  let totalChesterX1 = 0;
-  let totalJunctionBoxes = 0;
-  let verifiedCableCount = 0;
-  let largestBin: { name: string; capacity: number; diameter: number } | null = null;
-  const allBins: { yardName: string; bin: BinAsset }[] = [];
+  // Compute stats. Memoized because this scans every bin in every yard, and
+  // otherwise re-runs on every render (e.g. every keystroke in the Notes
+  // textarea below) rather than only when the project's bins actually change.
+  const {
+    totalYards,
+    totalCapacity,
+    totalChesterX,
+    totalChesterX1,
+    totalJunctionBoxes,
+    verifiedCableCount,
+    largestBin,
+    allBins,
+    totalBins,
+    avgBinCapacity,
+  } = useMemo(() => {
+    let totalCapacity = 0;
+    let totalChesterX = 0;
+    let totalChesterX1 = 0;
+    let totalJunctionBoxes = 0;
+    let verifiedCableCount = 0;
+    let largestBin: { name: string; capacity: number; diameter: number } | null = null;
+    const allBins: { yardName: string; bin: BinAsset }[] = [];
 
-  project.yards.forEach((yard) => {
-    yard.bins.forEach((b) => {
-      if (b.type === 'bin') {
-        allBins.push({ yardName: yard.name, bin: b as BinAsset });
-        const D = parseFloat(b.diameter) || 0;
-        const H = parseFloat(b.totalHeight) || 0;
-        const E = parseFloat(b.eaveHeight) || 0;
-        const F = parseFloat(b.floorThick) || 0;
-        const cap = Math.round(
-          Math.PI * Math.pow(D / 2, 2) * (Math.max(0, E - F) + (H - E) / 3) * 0.80356
-        );
-        totalCapacity += cap;
-        if ((b as BinAsset).centerCable || (b as BinAsset).radiusCable) {
-          verifiedCableCount++;
+    project.yards.forEach((yard) => {
+      yard.bins.forEach((b) => {
+        if (b.type === 'bin') {
+          const bin = b as BinAsset;
+          allBins.push({ yardName: yard.name, bin });
+          const cap = computeBinCapacityBushels(bin);
+          totalCapacity += cap;
+          if (bin.centerCable || bin.radiusCable) {
+            verifiedCableCount++;
+          }
+          if (!largestBin || cap > largestBin.capacity) {
+            largestBin = { name: bin.name || 'Unnamed bin', capacity: cap, diameter: parseFloat(bin.diameter) || 0 };
+          }
+        } else if (b.type === 'chester-x') {
+          totalChesterX++;
+        } else if (b.type === 'chester-x1') {
+          totalChesterX1++;
+        } else if (b.type === 'junction-box') {
+          totalJunctionBoxes++;
         }
-        if (!largestBin || cap > largestBin.capacity) {
-          largestBin = { name: b.name || 'Unnamed bin', capacity: cap, diameter: D };
-        }
-      } else if (b.type === 'chester-x') {
-        totalChesterX++;
-      } else if (b.type === 'chester-x1') {
-        totalChesterX1++;
-      } else if (b.type === 'junction-box') {
-        totalJunctionBoxes++;
-      }
+      });
     });
-  });
 
-  const totalBins = allBins.length;
-  const avgBinCapacity = totalBins > 0 ? Math.round(totalCapacity / totalBins) : 0;
+    const totalBins = allBins.length;
+    const avgBinCapacity = totalBins > 0 ? Math.round(totalCapacity / totalBins) : 0;
+
+    return {
+      totalYards: project.yards.length,
+      totalCapacity,
+      totalChesterX,
+      totalChesterX1,
+      totalJunctionBoxes,
+      verifiedCableCount,
+      largestBin,
+      allBins,
+      totalBins,
+      avgBinCapacity,
+    };
+  }, [project.yards]);
 
   // Yards CRUD actions
-  const handleCreateYard = () => {
-    const name = prompt('Enter new yard name:', `Yard ${project.yards.length + 1}`);
+  const handleCreateYard = async () => {
+    const name = await promptText('Enter new yard name:', `Yard ${project.yards.length + 1}`, {
+      title: 'New Yard',
+      confirmLabel: 'Create',
+    });
     if (!name) return;
 
-    const newId = Date.now();
+    const newId = generateAssetId();
     onUpdateProject((prev) => ({
       ...prev,
       activeYardId: newId,
@@ -278,12 +316,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }));
   };
 
-  const handleRenameYard = (yardId: number, e: React.MouseEvent) => {
+  const handleRenameYard = async (yardId: number, e: React.MouseEvent) => {
     e.stopPropagation();
     const yard = project.yards.find((y) => y.id === yardId);
     if (!yard) return;
 
-    const newName = prompt('Rename Yard:', yard.name);
+    const newName = await promptText('Rename Yard:', yard.name, { title: 'Rename Yard', confirmLabel: 'Rename' });
     if (!newName) return;
 
     onUpdateProject((prev) => ({
@@ -292,12 +330,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }));
   };
 
-  const handleEditLocation = (yardId: number, e: React.MouseEvent) => {
+  const handleEditLocation = async (yardId: number, e: React.MouseEvent) => {
     e.stopPropagation();
     const yard = project.yards.find((y) => y.id === yardId);
     if (!yard) return;
 
-    const newLocation = prompt('Enter Location Info for ' + yard.name + ':', yard.location || '');
+    const newLocation = await promptText('Enter Location Info for ' + yard.name + ':', yard.location || '', {
+      title: 'Yard Location',
+      confirmLabel: 'Save',
+    });
     if (newLocation === null) return;
 
     onUpdateProject((prev) => ({
@@ -306,14 +347,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }));
   };
 
-  const handleDeleteYard = (yardId: number, e: React.MouseEvent) => {
+  const handleDeleteYard = async (yardId: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (project.yards.length <= 1) {
-      alert('Projects must contain at least one yard layout.');
+      toast('Projects must contain at least one yard layout.', 'error');
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this yard and all its placed assets?')) return;
+    const confirmed = await confirm('Are you sure you want to delete this yard and all its placed assets?', {
+      title: 'Delete Yard',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     onUpdateProject((prev) => {
       const remainingYards = prev.yards.filter((y) => y.id !== yardId);
@@ -353,7 +399,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         let loadedProject: Project;
 
         if (Array.isArray(imported)) {
-          const mainYardId = Date.now();
+          const mainYardId = generateAssetId();
           loadedProject = {
             id: generateProjectId(),
             name: 'Imported Legacy Layout',
@@ -363,7 +409,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             yards: [{ id: mainYardId, name: 'Main Yard', bins: imported }],
           };
         } else if (imported.bins && !imported.yards) {
-          const mainYardId = Date.now();
+          const mainYardId = generateAssetId();
           loadedProject = {
             id: imported.id || generateProjectId(),
             driveFileId: imported.driveFileId,
@@ -389,17 +435,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         loadedProject.yards = loadedProject.yards.map(yard => ({
           ...yard,
           bins: (yard.bins || []).map((bin: any) => {
-            let type = bin.type;
-            if (!type) {
-              if (bin.diameter && (bin.rings || bin.centerCable || bin.radiusCable || bin.name)) {
-                type = 'bin';
-              } else {
-                type = 'bin';
-              }
-            }
+            const type = bin.type || 'bin';
             if (type === 'bin') {
               return {
-                id: bin.id || Date.now() + Math.random(),
+                id: bin.id || generateAssetId(),
                 type: 'bin',
                 name: bin.name || 'Unnamed Bin',
                 notes: bin.notes || '',
@@ -416,7 +455,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               } as any;
             } else if (type === 'zone') {
               return {
-                id: bin.id || Date.now() + Math.random(),
+                id: bin.id || generateAssetId(),
                 type: 'zone',
                 name: bin.name || 'Zone',
                 notes: bin.notes || '',
@@ -427,7 +466,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               } as any;
             } else {
               return {
-                id: bin.id || Date.now() + Math.random(),
+                id: bin.id || generateAssetId(),
                 type: type,
                 name: bin.name || '',
                 notes: bin.notes || '',
@@ -440,14 +479,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         }));
 
         if (loadedProject.yards.length === 0) {
-          const defId = Date.now();
+          const defId = generateAssetId();
           loadedProject.yards.push({ id: defId, name: 'Home Yard', bins: [] });
           loadedProject.activeYardId = defId;
         }
 
         onUpdateProject(() => loadedProject);
+        toast(`Imported "${loadedProject.name}" successfully.`, 'success');
       } catch (err) {
-        alert('Invalid project format. Make sure the JSON file is a valid GrainLink layout.');
+        toast('Invalid project format. Make sure the JSON file is a valid GrainLink layout.', 'error');
+      } finally {
+        // Reset so selecting the same file again re-fires onChange.
+        e.target.value = '';
       }
     };
     reader.readAsText(file);
@@ -836,6 +879,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Save size={12} className="text-gold" />
               <span>Export JSON</span>
             </button>
+
+            {/* 3. Import JSON file */}
+            <button
+              onClick={handleTriggerLoad}
+              className="col-span-2 py-2 px-2 bg-surface hover:bg-surface text-ink border border-line text-[10px] font-bold uppercase rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              title="Import a design from a local JSON file"
+              aria-label="Import a design from a local JSON file"
+            >
+              <FolderOpen size={12} className="text-gold" />
+              <span>Import JSON</span>
+            </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleLoadProjectJSON}
+              accept=".json"
+              className="hidden"
+            />
           </div>
         </div>
 
@@ -849,14 +910,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="text-[9px] text-ink-soft uppercase font-bold tracking-wider">Exported to PDF</span>
           </div>
           <textarea
-            value={project.notes || ''}
-            onChange={(e) => {
-              const newNotes = e.target.value;
-              onUpdateProject((prev) => ({
-                ...prev,
-                notes: newNotes,
-              }));
-            }}
+            value={notesDraft}
+            onChange={(e) => handleNotesChange(e.target.value)}
             placeholder="Type notes about the project here (e.g. site access instructions, installer notes, bin specs)..."
             rows={3}
             className="w-full bg-surface/80 border border-line focus:border-gold/50 rounded-xl p-2.5 text-xs text-ink-soft placeholder-ink-soft focus:outline-none transition-colors resize-y custom-scrollbar"
@@ -905,6 +960,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         onClick={(e) => handleEditLocation(yard.id, e)}
                         className="p-1 hover:text-ink text-ink-soft transition-colors"
                         title="Edit Yard Location"
+                        aria-label={`Edit location for ${yard.name}`}
                       >
                         <MapPin size={12} />
                       </button>
@@ -912,6 +968,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         onClick={(e) => handleRenameYard(yard.id, e)}
                         className="p-1 hover:text-ink text-ink-soft transition-colors"
                         title="Rename Yard"
+                        aria-label={`Rename ${yard.name}`}
                       >
                         <Edit2 size={12} />
                       </button>
@@ -919,6 +976,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         onClick={(e) => handleDeleteYard(yard.id, e)}
                         className="p-1 hover:text-red-400 text-ink-soft transition-colors"
                         title="Delete Yard"
+                        aria-label={`Delete ${yard.name}`}
                       >
                         <Trash2 size={12} />
                       </button>

@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Project, BinAsset, BinSpecModel, generateAssetId } from '../types';
 import { BIN_DATABASE, MANUFACTURERS, BIN_CATEGORIES } from '../data/binDatabase';
 import { getCableRecommendation } from '../utils/cableRecommendation';
+import { parseBinSpecExcelFile } from '../utils/binSpecExcelParser';
 import { useDialogs } from './ui/DialogProvider';
 import {
   Search,
@@ -19,8 +20,32 @@ import {
   Database,
   SlidersHorizontal,
   Download,
+  Upload,
   Save,
+  RotateCcw,
 } from 'lucide-react';
+
+const CUSTOM_DB_STORAGE_KEY = 'grainlink_custom_bin_database';
+
+interface CustomDbMeta {
+  fileName: string;
+  uploadedAt: string;
+  count: number;
+}
+
+function loadStoredCustomDatabase(): { data: BinSpecModel[]; meta: CustomDbMeta } | null {
+  try {
+    const saved = localStorage.getItem(CUSTOM_DB_STORAGE_KEY);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    if (parsed && Array.isArray(parsed.data) && parsed.data.length > 0 && parsed.meta) {
+      return parsed;
+    }
+  } catch (e) {
+    console.error('Failed to read stored custom bin database:', e);
+  }
+  return null;
+}
 
 interface BinSpecsViewProps {
   project: Project;
@@ -35,13 +60,23 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
   onSwitchTab,
   activeBinId,
 }) => {
-  const { toast } = useDialogs();
+  const { toast, confirm } = useDialogs();
+
+  // An uploaded catalogue (see handleUploadExcel below) persists in
+  // localStorage so it survives reloads, per-browser — the production
+  // deployment is a static site with no backend to store it centrally.
+  const [storedCustomDb] = useState(() => loadStoredCustomDatabase());
+  const [customDbMeta, setCustomDbMeta] = useState<CustomDbMeta | null>(storedCustomDb?.meta || null);
+  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
+  const excelFileInputRef = useRef<HTMLInputElement>(null);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedManufacturer, setSelectedManufacturer] = useState('All Manufacturers');
   const [selectedCategory, setSelectedCategory] = useState('All Types');
-  const [selectedSpecModel, setSelectedSpecModel] = useState<BinSpecModel>(BIN_DATABASE[0]);
+  const [selectedSpecModel, setSelectedSpecModel] = useState<BinSpecModel>(
+    storedCustomDb?.data[0] || BIN_DATABASE[0]
+  );
 
   // Custom spec modal state
   const [showCustomModal, setShowCustomModal] = useState(false);
@@ -70,7 +105,7 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
   });
 
   // Local database state
-  const [localDatabase, setLocalDatabase] = useState<BinSpecModel[]>(BIN_DATABASE);
+  const [localDatabase, setLocalDatabase] = useState<BinSpecModel[]>(storedCustomDb?.data || BIN_DATABASE);
   const [isLiveSynced, setIsLiveSynced] = useState<boolean>(false);
   const [excelSaveStatus, setExcelSaveStatus] = useState<string>('');
 
@@ -140,8 +175,14 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
     });
   };
 
-  // Fetch dynamic bin specs from server API if Excel file is updated
+  // Fetch dynamic bin specs from server API if Excel file is updated. Skipped
+  // entirely when a user has uploaded their own catalogue (see
+  // handleUploadExcel below) — a locally-uploaded set is a deliberate
+  // override and shouldn't be silently replaced by the dev server's copy of
+  // assets/Grain_Bin_Specifications.xlsx on the next reload. In the static
+  // production deployment this fetch always 404s and is a no-op.
   useEffect(() => {
+    if (customDbMeta) return;
     fetch('/api/bin-specs')
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP status ${res.status}`);
@@ -179,7 +220,69 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
       .catch((err) => {
         console.log('Using bundled static Excel database instance:', err);
       });
-  }, []);
+  }, [customDbMeta]);
+
+  const handleUploadExcelClick = () => {
+    excelFileInputRef.current?.click();
+  };
+
+  const handleExcelFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingExcel(true);
+    try {
+      const parsed = await parseBinSpecExcelFile(file);
+
+      const confirmed = await confirm(
+        `Replace the current bin specification library (${localDatabase.length} models) with ${parsed.length} models from "${file.name}"? This replaces the library shown here in this browser — it doesn't touch any bins already placed in your projects.`,
+        { title: 'Upload Bin Specs', confirmLabel: 'Replace Library' }
+      );
+      if (!confirmed) return;
+
+      const meta: CustomDbMeta = {
+        fileName: file.name,
+        uploadedAt: new Date().toISOString(),
+        count: parsed.length,
+      };
+
+      try {
+        localStorage.setItem(CUSTOM_DB_STORAGE_KEY, JSON.stringify({ data: parsed, meta }));
+      } catch (storageErr) {
+        console.error('Failed to persist uploaded bin database:', storageErr);
+      }
+
+      setLocalDatabase(parsed);
+      setCustomDbMeta(meta);
+      setSelectedSpecModel(parsed[0]);
+      setIsLiveSynced(false);
+      toast(`Loaded ${parsed.length} bin models from "${file.name}".`, 'success');
+    } catch (err: any) {
+      toast(err?.message || 'Failed to parse that Excel file.', 'error');
+    } finally {
+      setIsUploadingExcel(false);
+      // Reset so selecting the same file again re-fires onChange.
+      e.target.value = '';
+    }
+  };
+
+  const handleResetToDefaultLibrary = async () => {
+    const confirmed = await confirm(
+      'Reset to the default GrainLink bin specification library? This removes the uploaded catalogue from this browser.',
+      { title: 'Reset Library', confirmLabel: 'Reset' }
+    );
+    if (!confirmed) return;
+
+    try {
+      localStorage.removeItem(CUSTOM_DB_STORAGE_KEY);
+    } catch (e) {
+      console.error(e);
+    }
+    setLocalDatabase(BIN_DATABASE);
+    setCustomDbMeta(null);
+    setSelectedSpecModel(BIN_DATABASE[0]);
+    toast('Restored the default bin specification library.', 'success');
+  };
 
   // Derive active bin from project
   const activeBin = useMemo(() => {
@@ -344,7 +447,14 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
               Grain Bin Specifications Library
             </h1>
             <p className="text-xs text-ink-soft">
-              Powered by official manufacturer catalogue data
+              {customDbMeta ? (
+                <>
+                  Custom library: <span className="font-bold text-ink">{customDbMeta.fileName}</span>{' '}
+                  ({customDbMeta.count} models, uploaded {new Date(customDbMeta.uploadedAt).toLocaleDateString()})
+                </>
+              ) : (
+                'Powered by official manufacturer catalogue data'
+              )}
             </p>
           </div>
         </div>
@@ -356,6 +466,36 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
               {excelSaveStatus}
             </span>
           )}
+          {customDbMeta && (
+            <button
+              onClick={handleResetToDefaultLibrary}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface hover:bg-paper text-ink-soft hover:text-ink border border-line text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+              title="Reset to the default bin specification library"
+            >
+              <RotateCcw size={14} />
+              <span>Reset to Default</span>
+            </button>
+          )}
+          <input
+            type="file"
+            ref={excelFileInputRef}
+            accept=".xlsx,.xls"
+            onChange={handleExcelFileSelected}
+            className="hidden"
+          />
+          <button
+            onClick={handleUploadExcelClick}
+            disabled={isUploadingExcel}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold transition-all shadow-sm active:scale-95 ${
+              isUploadingExcel
+                ? 'bg-surface border-line text-ink-soft cursor-not-allowed'
+                : 'bg-gold/20 hover:bg-gold/30 text-gold-dark border-gold/40 cursor-pointer'
+            }`}
+            title="Upload a new bin specifications Excel file to replace this library"
+          >
+            <Upload size={14} className={isUploadingExcel ? 'animate-pulse' : ''} />
+            <span>{isUploadingExcel ? 'Parsing...' : 'Upload Excel (.xlsx)'}</span>
+          </button>
           <a
             href="/api/bin-specs/download-excel"
             download="Grain_Bin_Specifications.xlsx"

@@ -47,6 +47,38 @@ function loadStoredCustomDatabase(): { data: BinSpecModel[]; meta: CustomDbMeta 
   return null;
 }
 
+// A model's real-world identity is its manufacturer + model number, not its
+// (regenerated-per-parse) `id` — this is what "duplicate" means when merging
+// an uploaded catalogue into the existing library.
+function binIdentityKey(model: BinSpecModel): string {
+  return `${(model.manufacturer || '').trim().toLowerCase()}::${(model.modelNumber || '').trim().toLowerCase()}`;
+}
+
+function mergeBinDatabases(
+  existing: BinSpecModel[],
+  uploaded: BinSpecModel[]
+): { merged: BinSpecModel[]; addedCount: number; updatedCount: number } {
+  const merged = [...existing];
+  const indexByKey = new Map(merged.map((m, i) => [binIdentityKey(m), i]));
+  let addedCount = 0;
+  let updatedCount = 0;
+
+  for (const model of uploaded) {
+    const key = binIdentityKey(model);
+    const existingIdx = indexByKey.get(key);
+    if (existingIdx !== undefined) {
+      merged[existingIdx] = model;
+      updatedCount++;
+    } else {
+      merged.push(model);
+      indexByKey.set(key, merged.length - 1);
+      addedCount++;
+    }
+  }
+
+  return { merged, addedCount, updatedCount };
+}
+
 interface BinSpecsViewProps {
   project: Project;
   onUpdateProject: (updater: (prev: Project) => Project) => void;
@@ -233,30 +265,39 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
     setIsUploadingExcel(true);
     try {
       const parsed = await parseBinSpecExcelFile(file);
+      const { merged, addedCount, updatedCount } = mergeBinDatabases(localDatabase, parsed);
 
       const confirmed = await confirm(
-        `Replace the current bin specification library (${localDatabase.length} models) with ${parsed.length} models from "${file.name}"? This replaces the library shown here in this browser — it doesn't touch any bins already placed in your projects.`,
-        { title: 'Upload Bin Specs', confirmLabel: 'Replace Library' }
+        `Merge "${file.name}" into the bin specification library? This will add ${addedCount} new model${addedCount === 1 ? '' : 's'}` +
+          (updatedCount > 0 ? ` and replace ${updatedCount} existing model${updatedCount === 1 ? '' : 's'} with matching manufacturer + model number` : '') +
+          `. It doesn't touch any bins already placed in your projects.`,
+        { title: 'Upload Bin Specs', confirmLabel: 'Merge Library' }
       );
       if (!confirmed) return;
 
       const meta: CustomDbMeta = {
         fileName: file.name,
         uploadedAt: new Date().toISOString(),
-        count: parsed.length,
+        count: merged.length,
       };
 
       try {
-        localStorage.setItem(CUSTOM_DB_STORAGE_KEY, JSON.stringify({ data: parsed, meta }));
+        localStorage.setItem(CUSTOM_DB_STORAGE_KEY, JSON.stringify({ data: merged, meta }));
       } catch (storageErr) {
         console.error('Failed to persist uploaded bin database:', storageErr);
       }
 
-      setLocalDatabase(parsed);
+      setLocalDatabase(merged);
       setCustomDbMeta(meta);
-      setSelectedSpecModel(parsed[0]);
       setIsLiveSynced(false);
-      toast(`Loaded ${parsed.length} bin models from "${file.name}".`, 'success');
+      // If the model currently open in the detail panel was one of the ones
+      // just updated, point selection at the fresh copy instead of leaving
+      // it referencing the now-stale pre-merge object.
+      setSelectedSpecModel((prev) => merged.find((m) => binIdentityKey(m) === binIdentityKey(prev)) || prev);
+      toast(
+        `Merged "${file.name}": ${addedCount} added, ${updatedCount} updated. Library now has ${merged.length} models.`,
+        'success'
+      );
     } catch (err: any) {
       toast(err?.message || 'Failed to parse that Excel file.', 'error');
     } finally {
@@ -449,8 +490,8 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
             <p className="text-xs text-ink-soft">
               {customDbMeta ? (
                 <>
-                  Custom library: <span className="font-bold text-ink">{customDbMeta.fileName}</span>{' '}
-                  ({customDbMeta.count} models, uploaded {new Date(customDbMeta.uploadedAt).toLocaleDateString()})
+                  Includes uploaded models from <span className="font-bold text-ink">{customDbMeta.fileName}</span>{' '}
+                  ({customDbMeta.count} models total, last merged {new Date(customDbMeta.uploadedAt).toLocaleDateString()})
                 </>
               ) : (
                 'Powered by official manufacturer catalogue data'
@@ -491,7 +532,7 @@ export const BinSpecsView: React.FC<BinSpecsViewProps> = ({
                 ? 'bg-surface border-line text-ink-soft cursor-not-allowed'
                 : 'bg-gold/20 hover:bg-gold/30 text-gold-dark border-gold/40 cursor-pointer'
             }`}
-            title="Upload a new bin specifications Excel file to replace this library"
+            title="Upload an Excel file to merge new/updated bin models into this library"
           >
             <Upload size={14} className={isUploadingExcel ? 'animate-pulse' : ''} />
             <span>{isUploadingExcel ? 'Parsing...' : 'Upload Excel (.xlsx)'}</span>

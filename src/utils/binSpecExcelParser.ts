@@ -38,7 +38,11 @@ export async function parseBinSpecExcelFile(file: File): Promise<BinSpecModel[]>
 
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: 'array' });
-  const allModels: any[] = [];
+  // Keyed by id so two rows that normalize to the same brand+model (e.g. a
+  // corrected duplicate row later in the sheet) don't produce two entries
+  // silently colliding on the same id downstream — the later row wins, but
+  // Map keeps the position of the first occurrence for a stable read order.
+  const allModelsByKey = new Map<string, any>();
 
   for (const sheetName of workbook.SheetNames) {
     if (sheetName === 'All Bins Summary') continue;
@@ -118,8 +122,15 @@ export async function parseBinSpecExcelFile(file: File): Promise<BinSpecModel[]>
       const verifiedCenterCableVal = item['Verified Center Cable Length (ft)'] || item['Verified Center Cable Length'] || '';
       const verifiedRadiusCableVal = item['Verified Radius Cable Length (ft)'] || item['Verified Radius Cable Length'] || '';
 
-      allModels.push({
-        id: `excel-${brand}-${effectiveModel}-${allModels.length + 1}`.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      // Deterministic (brand + model, no positional index) so re-uploading
+      // the same or an updated catalogue produces the same id for the same
+      // real-world bin model — required for the merge-by-identity logic in
+      // BinSpecsView and so a model's verified cable lengths (keyed by id)
+      // survive re-uploads instead of orphaning on every parse.
+      const id = `excel-${brand}-${effectiveModel}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
+
+      allModelsByKey.set(id, {
+        id,
         manufacturer: brand,
         modelNumber: stdModel || origModel,
         originalModelNumber: origModel,
@@ -143,6 +154,8 @@ export async function parseBinSpecExcelFile(file: File): Promise<BinSpecModel[]>
       });
     }
   }
+
+  const allModels = Array.from(allModelsByKey.values());
 
   if (allModels.length === 0) {
     throw new Error(

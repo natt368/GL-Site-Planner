@@ -5,3 +5,12 @@
 *.gif binary
 *.webp binary
 *.ico binary
+
+# Office/archive formats are ZIP containers — without this, git can apply
+# text-mode line-ending normalization on checkout/commit and corrupt the
+# ZIP structure (this already happened to assets/Grain_Bin_Specifications.xlsx).
+*.xlsx binary
+*.xls binary
+*.docx binary
+*.pdf binary
+*.zip binary

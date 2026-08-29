@@ -7,7 +7,7 @@ import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import { Project, Yard, Asset, BinAsset, generateProjectId, generateAssetId } from '../types';
 import { getCableRecommendation } from '../utils/cableRecommendation';
 import { computeBinCapacityBushels } from '../utils/binCapacity';
-import { Plus, Edit2, Trash2, FolderOpen, Save, MapPin, Cloud, LogOut, RefreshCw, AlertTriangle, Check, Download, FileText, Copy } from 'lucide-react';
+import { Plus, Edit2, Trash2, FolderOpen, Save, MapPin, Cloud, LogOut, RefreshCw, AlertTriangle, Check, Download, FileText, Copy, GripVertical } from 'lucide-react';
 import {
   initAuth,
   googleSignIn,
@@ -48,6 +48,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [isSavingDrive, setIsSavingDrive] = useState(false);
   const [driveSuccessMessage, setDriveSuccessMessage] = useState<string | null>(null);
   const [driveError, setDriveError] = useState<string | null>(null);
+
+  // Yard reordering (drag-to-reorder in the Yards Manager list)
+  const [isReorderingYards, setIsReorderingYards] = useState(false);
+  const [draggedYardId, setDraggedYardId] = useState<number | null>(null);
+  const [dragOverYardId, setDragOverYardId] = useState<number | null>(null);
 
   // Local draft buffer for Project Notes: committing to global project
   // state (and its undo history) on every keystroke made typing sluggish on
@@ -370,6 +375,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         yards: remainingYards,
       };
     });
+  };
+
+  const handleYardDragStart = (yardId: number, e: React.DragEvent) => {
+    setDraggedYardId(yardId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleYardDragOver = (yardId: number, e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (yardId !== dragOverYardId) setDragOverYardId(yardId);
+  };
+
+  const handleYardDrop = (targetYardId: number, e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverYardId(null);
+    const sourceYardId = draggedYardId;
+    setDraggedYardId(null);
+    if (sourceYardId === null || sourceYardId === targetYardId) return;
+
+    onUpdateProject((prev) => {
+      const yards = [...prev.yards];
+      const fromIdx = yards.findIndex((y) => y.id === sourceYardId);
+      const toIdx = yards.findIndex((y) => y.id === targetYardId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      const [moved] = yards.splice(fromIdx, 1);
+      yards.splice(toIdx, 0, moved);
+      return { ...prev, yards };
+    });
+  };
+
+  const handleYardDragEnd = () => {
+    setDraggedYardId(null);
+    setDragOverYardId(null);
   };
 
   // JSON Save / Load
@@ -812,24 +851,88 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Right Side: Yards Manager Panel + Project File Controls */}
       <div className="flex-1 max-w-sm flex flex-col gap-4 overflow-hidden shrink-0">
-        {/* Save / Load Project File Actions (Compact) */}
+        {/* Save / Load Project File Actions (icon-only, compact) */}
         <div className="bg-surface rounded-2xl border border-line p-3 flex flex-col gap-2 shrink-0">
-          {accessToken && (
-            <div className="flex items-center justify-between">
-              <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                <Cloud size={10} />
-                Connected
-              </span>
-              <button
-                onClick={handleDisconnectDrive}
-                className="text-[9px] font-bold text-ink-soft hover:text-red-400 uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer"
-                title="Sign out of Google Drive"
-              >
-                <LogOut size={10} />
-                Disconnect
-              </button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {/* 1. Back up to drive */}
+              <div className="relative group">
+                <button
+                  onClick={handleBackupToDriveClick}
+                  disabled={isSavingDrive}
+                  aria-label="Backup to Drive"
+                  className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
+                    isSavingDrive
+                      ? 'bg-surface border-line text-ink-soft pointer-events-none'
+                      : 'bg-gold border-gold hover:bg-gold-hover text-ink shadow-sm'
+                  }`}
+                >
+                  {isSavingDrive ? (
+                    <RefreshCw size={14} className="animate-spin" />
+                  ) : (
+                    <Cloud size={14} />
+                  )}
+                </button>
+                {accessToken && !isSavingDrive && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-surface" />
+                )}
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-20 shadow-lg">
+                  {isSavingDrive ? 'Saving…' : accessToken ? 'Backup to Drive (Connected)' : 'Backup to Drive'}
+                </span>
+              </div>
+
+              {/* 2. Export JSON file */}
+              <div className="relative group">
+                <button
+                  onClick={handleSaveProject}
+                  aria-label="Export JSON"
+                  className="w-9 h-9 rounded-xl bg-surface hover:bg-surface text-ink border border-line flex items-center justify-center transition-all cursor-pointer"
+                >
+                  <Save size={14} className="text-gold" />
+                </button>
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-20 shadow-lg">
+                  Export as JSON file
+                </span>
+              </div>
+
+              {/* 3. Import JSON file */}
+              <div className="relative group">
+                <button
+                  onClick={handleTriggerLoad}
+                  aria-label="Import JSON"
+                  className="w-9 h-9 rounded-xl bg-surface hover:bg-surface text-ink border border-line flex items-center justify-center transition-all cursor-pointer"
+                >
+                  <FolderOpen size={14} className="text-gold" />
+                </button>
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-20 shadow-lg">
+                  Import from JSON file
+                </span>
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleLoadProjectJSON}
+                accept=".json"
+                className="hidden"
+              />
             </div>
-          )}
+
+            {/* 4. Disconnect (only when connected) */}
+            {accessToken && (
+              <div className="relative group">
+                <button
+                  onClick={handleDisconnectDrive}
+                  aria-label="Disconnect Google Drive"
+                  className="w-9 h-9 rounded-xl bg-surface border border-line text-ink-soft hover:text-red-400 hover:border-red-400/50 hover:bg-red-500/5 flex items-center justify-center transition-all cursor-pointer"
+                >
+                  <LogOut size={14} />
+                </button>
+                <span className="pointer-events-none absolute right-0 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-20 shadow-lg">
+                  Disconnect Google Drive
+                </span>
+              </div>
+            )}
+          </div>
 
           {driveError && (
             <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-1.5 text-[10px] text-red-400">
@@ -844,60 +947,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span className="text-[9px]">{driveSuccessMessage}</span>
             </div>
           )}
-
-          <div className="grid grid-cols-2 gap-2">
-            {/* 1. Back up to drive */}
-            <button
-              onClick={handleBackupToDriveClick}
-              disabled={isSavingDrive}
-              className={`py-2 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 border cursor-pointer transition-all ${
-                isSavingDrive
-                  ? 'bg-surface border-line text-ink-soft pointer-events-none'
-                  : 'bg-gold border-gold hover:bg-gold text-ink shadow-sm'
-              }`}
-              title="Back up design to Google Drive"
-            >
-              {isSavingDrive ? (
-                <>
-                  <RefreshCw size={11} className="animate-spin text-ink-soft" />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <Cloud size={12} />
-                  <span>Backup to Drive</span>
-                </>
-              )}
-            </button>
-
-            {/* 2. Export JSON file */}
-            <button
-              onClick={handleSaveProject}
-              className="py-2 px-2 bg-surface hover:bg-surface text-ink border border-line text-[10px] font-bold uppercase rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-              title="Export design as a local JSON file"
-            >
-              <Save size={12} className="text-gold" />
-              <span>Export JSON</span>
-            </button>
-
-            {/* 3. Import JSON file */}
-            <button
-              onClick={handleTriggerLoad}
-              className="col-span-2 py-2 px-2 bg-surface hover:bg-surface text-ink border border-line text-[10px] font-bold uppercase rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-              title="Import a design from a local JSON file"
-              aria-label="Import a design from a local JSON file"
-            >
-              <FolderOpen size={12} className="text-gold" />
-              <span>Import JSON</span>
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleLoadProjectJSON}
-              accept=".json"
-              className="hidden"
-            />
-          </div>
         </div>
 
         {/* Project Notes Container */}
@@ -913,7 +962,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             value={notesDraft}
             onChange={(e) => handleNotesChange(e.target.value)}
             placeholder="Type notes about the project here (e.g. site access instructions, installer notes, bin specs)..."
-            rows={3}
+            rows={9}
             className="w-full bg-surface/80 border border-line focus:border-gold/50 rounded-xl p-2.5 text-xs text-ink-soft placeholder-ink-soft focus:outline-none transition-colors resize-y custom-scrollbar"
           />
         </div>
@@ -922,14 +971,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="bg-surface rounded-2xl border border-line p-5 flex flex-col flex-grow overflow-hidden">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-ink">Yards Manager</h3>
-            <button
-              onClick={handleCreateYard}
-              className="px-3 py-1.5 bg-gold hover:bg-gold text-ink text-[10px] font-black uppercase rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <Plus size={12} strokeWidth={3} />
-              Add Yard
-            </button>
+            <div className="flex items-center gap-2">
+              {project.yards.length > 1 && (
+                <button
+                  onClick={() => setIsReorderingYards((v) => !v)}
+                  className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                    isReorderingYards
+                      ? 'bg-gold/20 border-gold/40 text-gold'
+                      : 'border-line text-ink-soft hover:text-ink hover:border-ink-soft/40'
+                  }`}
+                  title={isReorderingYards ? 'Done reordering yards' : 'Reorder yards'}
+                  aria-label={isReorderingYards ? 'Done reordering yards' : 'Reorder yards'}
+                >
+                  <Edit2 size={12} />
+                </button>
+              )}
+              <button
+                onClick={handleCreateYard}
+                className="px-3 py-1.5 bg-gold hover:bg-gold text-ink text-[10px] font-black uppercase rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <Plus size={12} strokeWidth={3} />
+                Add Yard
+              </button>
+            </div>
           </div>
+          {isReorderingYards && (
+            <p className="text-[10px] text-ink-soft font-semibold mb-2 -mt-1.5">
+              Drag a yard by its handle to reorder the list.
+            </p>
+          )}
           <div id="yards-list" className="flex-grow overflow-y-auto space-y-3 pr-1 custom-scrollbar">
             {project.yards.map((yard) => {
               const isActive = yard.id === project.activeYardId;
@@ -939,71 +1009,95 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               return (
                 <div
                   key={yard.id}
-                  onClick={() => onSelectYard(yard.id)}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    onSelectYard(yard.id);
-                    onSwitchTab('planner');
-                  }}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer select-none ${
-                    isActive
+                  draggable={isReorderingYards}
+                  onDragStart={isReorderingYards ? (e) => handleYardDragStart(yard.id, e) : undefined}
+                  onDragOver={isReorderingYards ? (e) => handleYardDragOver(yard.id, e) : undefined}
+                  onDrop={isReorderingYards ? (e) => handleYardDrop(yard.id, e) : undefined}
+                  onDragEnd={isReorderingYards ? handleYardDragEnd : undefined}
+                  onClick={isReorderingYards ? undefined : () => onSelectYard(yard.id)}
+                  onDoubleClick={
+                    isReorderingYards
+                      ? undefined
+                      : (e) => {
+                          e.stopPropagation();
+                          onSelectYard(yard.id);
+                          onSwitchTab('planner');
+                        }
+                  }
+                  className={`p-4 rounded-xl border transition-all select-none ${
+                    isReorderingYards ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                  } ${draggedYardId === yard.id ? 'opacity-40' : ''} ${
+                    dragOverYardId === yard.id && draggedYardId !== yard.id
+                      ? 'border-gold border-2'
+                      : isActive
                       ? 'bg-gold/5 border-gold/30'
                       : 'bg-surface border-line hover:bg-surface'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={`font-bold text-sm ${isActive ? 'text-gold' : 'text-ink'}`}>
+                    <span className={`font-bold text-sm flex items-center gap-1.5 ${isActive ? 'text-gold' : 'text-ink'}`}>
+                      {isReorderingYards && <GripVertical size={13} className="text-ink-soft shrink-0" />}
                       {yard.name}
                     </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => handleEditLocation(yard.id, e)}
-                        className="p-1 hover:text-ink text-ink-soft transition-colors"
-                        title="Edit Yard Location"
-                        aria-label={`Edit location for ${yard.name}`}
-                      >
-                        <MapPin size={12} />
-                      </button>
-                      <button
-                        onClick={(e) => handleRenameYard(yard.id, e)}
-                        className="p-1 hover:text-ink text-ink-soft transition-colors"
-                        title="Rename Yard"
-                        aria-label={`Rename ${yard.name}`}
-                      >
-                        <Edit2 size={12} />
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteYard(yard.id, e)}
-                        className="p-1 hover:text-red-400 text-ink-soft transition-colors"
-                        title="Delete Yard"
-                        aria-label={`Delete ${yard.name}`}
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
+                    {!isReorderingYards && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => handleRenameYard(yard.id, e)}
+                          className="p-1 hover:text-ink text-ink-soft transition-colors"
+                          title="Rename Yard"
+                          aria-label={`Rename ${yard.name}`}
+                        >
+                          <Edit2 size={12} />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteYard(yard.id, e)}
+                          className="p-1 hover:text-red-400 text-ink-soft transition-colors"
+                          title="Delete Yard"
+                          aria-label={`Delete ${yard.name}`}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   {yard.location ? (
                     <div className="text-[11px] text-gold/85 mt-1 flex items-center gap-1.5 font-medium leading-none">
                       <MapPin size={10} className="shrink-0 text-gold" />
-                      <span className="truncate">{yard.location}</span>
+                      <span className="truncate flex-1">{yard.location}</span>
+                      {!isReorderingYards && (
+                        <button
+                          onClick={(e) => handleEditLocation(yard.id, e)}
+                          className="p-0.5 text-ink-soft hover:text-gold transition-colors shrink-0"
+                          title="Edit Yard Location"
+                          aria-label={`Edit location for ${yard.name}`}
+                        >
+                          <Edit2 size={10} />
+                        </button>
+                      )}
                     </div>
                   ) : (
-                    <div 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditLocation(yard.id, e);
-                      }}
-                      className="text-[10px] text-ink-soft hover:text-ink-soft italic mt-1 flex items-center gap-1 cursor-pointer select-none"
-                    >
+                    <div className="text-[10px] text-ink-soft italic mt-1 flex items-center gap-1.5 select-none">
                       <MapPin size={10} className="shrink-0 text-ink" />
-                      <span>Add Location info...</span>
+                      <span>No location set</span>
+                      {!isReorderingYards && (
+                        <button
+                          onClick={(e) => handleEditLocation(yard.id, e)}
+                          className="p-0.5 text-ink-soft hover:text-gold transition-colors shrink-0"
+                          title="Add Yard Location"
+                          aria-label={`Add location for ${yard.name}`}
+                        >
+                          <Edit2 size={10} />
+                        </button>
+                      )}
                     </div>
                   )}
                   <div className="text-[10px] text-ink-soft font-bold uppercase mt-2.5 flex justify-between border-t border-line/40 pt-1.5">
                     <span>{totalBinsInYard} Bins</span>
                     <span>{totalAssetsInYard} Assets Total</span>
                   </div>
-                  <p className="text-[9px] text-ink-soft mt-1.5 font-bold">Double-click to open in planner</p>
+                  <p className="text-[9px] text-ink-soft mt-1.5 font-bold">
+                    {isReorderingYards ? 'Drag to reorder' : 'Double-click to open in planner'}
+                  </p>
                 </div>
               );
             })}

@@ -7,7 +7,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { Project, Yard, Asset, BinAsset, MarkerAsset, ZoneAsset, BinSpecModel, WireConnection, generateAssetId } from '../types';
 import { getCableRecommendation } from '../utils/cableRecommendation';
 import { BIN_DATABASE } from '../data/binDatabase';
-import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search } from 'lucide-react';
+import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search, Lock, Unlock } from 'lucide-react';
 
 interface SitePlannerViewProps {
   project: Project;
@@ -104,6 +104,15 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   // Canvas size state
   const [dimensions, setDimensions] = useState({ width: 600, height: 600 });
 
+  // Edit Mode gate: off by default so the layout can't be changed by
+  // accident (a stray drag, an arrow-key nudge, a misclick on Delete).
+  // Selecting an asset to inspect its properties and panning/zooming still
+  // work in view-only mode; every mutating action is gated on this.
+  const [editMode, setEditMode] = useState<boolean>(false);
+  // Shared className for any UI region that mutates the layout — dimmed and
+  // inert while Edit Mode is off.
+  const editLockedClass = !editMode ? 'opacity-60 pointer-events-none select-none' : '';
+
   // Navigation view state (zoom/pan)
   const [view, setView] = useState({ x: 0, y: 0, scale: 1.0 });
 
@@ -171,6 +180,19 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     startScreenY: number;
     hasMoved: boolean;
   }>({ active: false, wireId: null, startScreenX: 0, startScreenY: 0, hasMoved: false });
+
+  // Any in-progress interaction (drag, resize, wire-bend, an open wiring
+  // session) is invalid the moment Edit Mode is turned off — clear it so
+  // nothing gets stuck mid-gesture.
+  useEffect(() => {
+    if (editMode) return;
+    dragInfoRef.current.active = false;
+    resizeInfoRef.current.active = false;
+    wireBendInfoRef.current = { active: false, wireId: null, startScreenX: 0, startScreenY: 0, hasMoved: false };
+    setWiringState(null);
+    setSelectionBox(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode]);
 
   const activeYard = useMemo(() => {
     return project.yards.find((y) => y.id === project.activeYardId) || project.yards[0];
@@ -845,7 +867,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   };
 
   const handleAddBinFromModel = (model: BinSpecModel) => {
-    if (!activeYard) return;
+    if (!activeYard || !editMode) return;
 
     const worldCenter = screenToWorld(dimensions.width / 2, dimensions.height / 2);
     const binName = nextNumberedName(
@@ -908,7 +930,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
   // Add Asset Presets
   const handleAddBin = (diameter: number) => {
-    if (!activeYard) return;
+    if (!activeYard || !editMode) return;
 
     const worldCenter = screenToWorld(dimensions.width / 2, dimensions.height / 2);
     const binName = nextNumberedName(
@@ -949,7 +971,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   };
 
   const handleAddSpecialMarker = (markerType: 'chester-x' | 'chester-x1' | 'junction-box' | 'fan-control') => {
-    if (!activeYard) return;
+    if (!activeYard || !editMode) return;
 
     const worldCenter = screenToWorld(dimensions.width / 2, dimensions.height / 2);
     const labelPrefix = 
@@ -985,7 +1007,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   };
 
   const handleAddZoneBox = () => {
-    if (!activeYard) return;
+    if (!activeYard || !editMode) return;
 
     const worldCenter = screenToWorld(dimensions.width / 2, dimensions.height / 2);
     const newZone: ZoneAsset = {
@@ -1009,6 +1031,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   };
 
   const handleDeleteAsset = useCallback(() => {
+    if (!editMode) return;
     const idsToDelete = selectedAssetIds.length > 0
       ? selectedAssetIds
       : (selectedAssetId !== null ? [selectedAssetId] : []);
@@ -1029,9 +1052,10 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
     setSelectedAssetIds([]);
     onSelectAsset(null);
-  }, [selectedAssetId, selectedAssetIds, onUpdateProject, onSelectAsset]);
+  }, [selectedAssetId, selectedAssetIds, onUpdateProject, onSelectAsset, editMode]);
 
   const handleDuplicateAsset = useCallback(() => {
+    if (!editMode) return;
     const idsToDuplicate = selectedAssetIds.length > 0
       ? selectedAssetIds
       : (selectedAssetId !== null ? [selectedAssetId] : []);
@@ -1114,11 +1138,11 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
     const newIds = newBins.map((b) => b.id);
     handleSetSelectedAssetIds(newIds);
-  }, [selectedAssetId, selectedAssetIds, activeYard, onUpdateProject]);
+  }, [selectedAssetId, selectedAssetIds, activeYard, onUpdateProject, editMode]);
 
   const handleDistributeAssets = useCallback(
     (mode: 'horizontal' | 'vertical') => {
-      if (!activeYard) return;
+      if (!activeYard || !editMode) return;
 
       let targetIds =
         selectedAssetIds.length >= 2
@@ -1201,7 +1225,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
         }),
       }));
     },
-    [activeYard, selectedAssetIds, selectedAssetId, snapToGrid, onUpdateProject]
+    [activeYard, selectedAssetIds, selectedAssetId, snapToGrid, onUpdateProject, editMode]
   );
 
   // Setup Keyboard Shortcuts
@@ -1216,6 +1240,8 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
       ) {
         return;
       }
+
+      if (!editMode) return;
 
       const hasSelection = selectedAssetIds.length > 0 || selectedAssetId !== null;
 
@@ -1275,9 +1301,10 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedAssetId, selectedAssetIds, snapToGrid, onUpdateProject, handleDeleteAsset, handleDuplicateAsset]);
+  }, [selectedAssetId, selectedAssetIds, snapToGrid, onUpdateProject, handleDeleteAsset, handleDuplicateAsset, editMode]);
 
   const handleUpdateAssetProperty = (key: string, value: any) => {
+    if (!editMode) return;
     // Dimension fields feed directly into the diagram's scale calculation
     // (pixelsPerFoot = 400 / max(...)). A zero, negative, or non-numeric
     // value here would silently break the whole diagram, so guard it here
@@ -1316,7 +1343,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   };
 
   const handleSaveWire = (type: 'cat5' | 'female-link') => {
-    if (!activeYard || !wiringState || wiringState.fromAssetId === null || !wiringState.toAssetId) return;
+    if (!editMode || !activeYard || !wiringState || wiringState.fromAssetId === null || !wiringState.toAssetId) return;
     const fromId = wiringState.fromAssetId;
     const toId = wiringState.toAssetId;
 
@@ -1367,7 +1394,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     // A plain click (released without meaningful movement) still deletes
     // the wire, same as before. Dragging instead bends the wire through
     // wherever the mouse moves, while both endpoints stay snapped in place.
-    if (hoveredWireId !== null) {
+    if (hoveredWireId !== null && editMode) {
       wireBendInfoRef.current = {
         active: true,
         wireId: hoveredWireId,
@@ -1426,7 +1453,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
       const dy = (worldPos.y - hy) * view.scale;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist < 15) {
+      if (dist < 15 && editMode) {
         resizeInfoRef.current = {
           active: true,
           anchorX: zoneBin.x - w / 2,
@@ -1480,17 +1507,19 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
       handleSetSelectedAssetIds(nextSelectedIds);
 
-      const dragIds = nextSelectedIds.includes(clickedBin.id) ? nextSelectedIds : [clickedBin.id];
+      if (editMode) {
+        const dragIds = nextSelectedIds.includes(clickedBin.id) ? nextSelectedIds : [clickedBin.id];
 
-      dragInfoRef.current = {
-        active: true,
-        offset: { x: worldPos.x - clickedBin.x, y: worldPos.y - clickedBin.y },
-        startWorldPos: { x: worldPos.x, y: worldPos.y },
-        startPositions: dragIds.map((id) => {
-          const b = activeYard.bins.find((bin) => bin.id === id);
-          return { id, x: b?.x || 0, y: b?.y || 0 };
-        }),
-      };
+        dragInfoRef.current = {
+          active: true,
+          offset: { x: worldPos.x - clickedBin.x, y: worldPos.y - clickedBin.y },
+          startWorldPos: { x: worldPos.x, y: worldPos.y },
+          startPositions: dragIds.map((id) => {
+            const b = activeYard.bins.find((bin) => bin.id === id);
+            return { id, x: b?.x || 0, y: b?.y || 0 };
+          }),
+        };
+      }
     } else {
       // Empty space clicked
       if (selectionMode === 'select') {
@@ -1934,7 +1963,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
             </div>
 
             {/* Distribution Quick Tools */}
-            <div className="mt-2.5 space-y-1">
+            <div className={`mt-2.5 space-y-1 ${editLockedClass}`}>
               <div className="text-[9px] font-black text-gold uppercase tracking-wider mb-1 flex items-center justify-between">
                 <span>Distribution Tools</span>
                 <span className="text-[8.5px] text-ink-soft font-normal">
@@ -1981,7 +2010,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                   </button>
                 </div>
 
-                <div className="flex gap-1.5">
+                <div className={`flex gap-1.5 ${editLockedClass}`}>
                   <button
                     onClick={handleDuplicateAsset}
                     className="flex-1 py-1 bg-surface hover:bg-line text-ink-soft border border-line rounded text-[10px] font-extrabold transition-colors cursor-pointer text-center"
@@ -2006,7 +2035,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
             <h2 className="text-[10px] font-bold uppercase tracking-widest text-ink-soft mb-2 flex items-center gap-2">
               Markers &amp; Zones
             </h2>
-            <div className="space-y-2">
+            <div className={`space-y-2 ${editLockedClass}`}>
               {/* Squeezed quick-add grid of stacked buttons */}
               <div className="flex flex-col gap-1.5 w-full">
                 <button
@@ -2109,6 +2138,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
             <h2 className="text-[10px] font-bold uppercase tracking-widest text-ink-soft mb-2 flex items-center gap-2">
               Add Bin Unit
             </h2>
+            <div className={editLockedClass}>
             <div className="relative mb-2">
               <div className="relative flex items-center">
                 <input
@@ -2190,10 +2220,17 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                 </button>
               ))}
             </div>
+            </div>
           </section>
 
           {/* Properties Panel */}
-          <div id="properties-panel">
+          {!editMode && selectedAsset && (
+            <div className="flex items-center gap-1.5 -mb-1 text-[9px] font-bold text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5">
+              <Lock className="w-3 h-3 shrink-0" />
+              View only — turn on Edit Mode to make changes
+            </div>
+          )}
+          <div id="properties-panel" className={editLockedClass}>
             {selectedAsset ? (
               <div className="bg-paper p-3.5 rounded-xl border border-line space-y-3.5 text-ink">
                 <h2 className="text-xs font-black uppercase tracking-widest text-ink">
@@ -2804,6 +2841,18 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
         )}
 
         <div className="absolute bottom-6 left-6 flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setEditMode((prev) => !prev)}
+            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider cursor-pointer shadow-lg ${
+              editMode
+                ? 'bg-red-500/15 border-red-500/40 text-red-400 hover:bg-red-500/25'
+                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+            }`}
+            title={editMode ? 'Edit Mode is ON — click to lock the layout' : 'Edit Mode is OFF — click to unlock and make changes'}
+          >
+            {editMode ? <Unlock size={13} /> : <Lock size={13} />}
+            Edit Mode: {editMode ? 'ON' : 'OFF'}
+          </button>
           <button
             onClick={resetView}
             className="bg-surface hover:bg-surface text-ink-soft px-4 py-2.5 rounded-xl border border-line transition-colors shadow-lg flex items-center gap-2 text-xs font-bold uppercase tracking-wider cursor-pointer"

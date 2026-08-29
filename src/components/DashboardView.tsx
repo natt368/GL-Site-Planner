@@ -975,13 +975,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <Edit2 size={12} />
                 </button>
               )}
-              <button
-                onClick={handleCreateYard}
-                className="px-3 py-1.5 bg-gold hover:bg-gold text-ink text-[10px] font-black uppercase rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-              >
-                <Plus size={12} strokeWidth={3} />
-                Add Yard
-              </button>
+              <div className="relative group">
+                <button
+                  onClick={handleCreateYard}
+                  aria-label="Add Yard"
+                  className="w-8 h-8 rounded-lg bg-gold hover:bg-gold-hover text-ink flex items-center justify-center transition-colors cursor-pointer shadow-sm"
+                >
+                  <Plus size={14} strokeWidth={3} />
+                </button>
+                <span className="pointer-events-none absolute right-0 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-20 shadow-lg">
+                  Add Yard
+                </span>
+              </div>
             </div>
           </div>
           {isReorderingYards && (

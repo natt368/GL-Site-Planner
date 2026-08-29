@@ -165,6 +165,15 @@ export default function App() {
     setTimeout(() => setCopiedId(false), 2000);
   };
 
+  const [copiedCustomerField, setCopiedCustomerField] = useState<string | null>(null);
+
+  const handleCopyCustomerField = (fieldKey: string, value: string) => {
+    if (!value) return;
+    navigator.clipboard.writeText(value).catch(() => {});
+    setCopiedCustomerField(fieldKey);
+    setTimeout(() => setCopiedCustomerField((prev) => (prev === fieldKey ? null : prev)), 2000);
+  };
+
   // Undo history stack state
   const [history, setHistory] = useState<Project[]>([]);
 
@@ -1294,15 +1303,31 @@ export default function App() {
 
               <div className="space-y-4">
                 {([
-                  { key: 'name', label: 'Customer Name', placeholder: '', type: 'text' },
-                  { key: 'phone', label: 'Customer Phone', placeholder: '', type: 'text' },
-                  { key: 'email', label: 'Customer Email', placeholder: 'customer@email.com', type: 'email' },
-                  { key: 'location', label: 'Customer Location / Address', placeholder: 'e.g. Regina, SK', type: 'text' },
+                  { key: 'name', label: 'Customer Name', placeholder: '', type: 'text', copyable: true },
+                  { key: 'phone', label: 'Customer Phone', placeholder: '', type: 'text', copyable: false },
+                  { key: 'email', label: 'Customer Email', placeholder: 'customer@email.com', type: 'email', copyable: true },
+                  { key: 'location', label: 'Customer Location / Address', placeholder: 'e.g. Regina, SK', type: 'text', copyable: true },
                 ] as const).map((field) => (
                   <div key={field.key}>
-                    <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1">
-                      {field.label}
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider">
+                        {field.label}
+                      </label>
+                      {field.copyable && (project.customer as any)[field.key] && (
+                        <button
+                          onClick={() => handleCopyCustomerField(field.key, (project.customer as any)[field.key])}
+                          className="p-1 text-ink-soft hover:text-gold transition-colors cursor-pointer"
+                          title={`Copy ${field.label}`}
+                          aria-label={`Copy ${field.label}`}
+                        >
+                          {copiedCustomerField === field.key ? (
+                            <Check size={12} className="text-emerald-400" />
+                          ) : (
+                            <Copy size={12} />
+                          )}
+                        </button>
+                      )}
+                    </div>
                     {isEditingCustomer ? (
                       <input
                         type={field.type}

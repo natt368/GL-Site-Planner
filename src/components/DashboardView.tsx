@@ -812,24 +812,88 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Right Side: Yards Manager Panel + Project File Controls */}
       <div className="flex-1 max-w-sm flex flex-col gap-4 overflow-hidden shrink-0">
-        {/* Save / Load Project File Actions (Compact) */}
+        {/* Save / Load Project File Actions (icon-only, compact) */}
         <div className="bg-surface rounded-2xl border border-line p-3 flex flex-col gap-2 shrink-0">
-          {accessToken && (
-            <div className="flex items-center justify-between">
-              <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                <Cloud size={10} />
-                Connected
-              </span>
-              <button
-                onClick={handleDisconnectDrive}
-                className="text-[9px] font-bold text-ink-soft hover:text-red-400 uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer"
-                title="Sign out of Google Drive"
-              >
-                <LogOut size={10} />
-                Disconnect
-              </button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {/* 1. Back up to drive */}
+              <div className="relative group">
+                <button
+                  onClick={handleBackupToDriveClick}
+                  disabled={isSavingDrive}
+                  aria-label="Backup to Drive"
+                  className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
+                    isSavingDrive
+                      ? 'bg-surface border-line text-ink-soft pointer-events-none'
+                      : 'bg-gold border-gold hover:bg-gold-hover text-ink shadow-sm'
+                  }`}
+                >
+                  {isSavingDrive ? (
+                    <RefreshCw size={14} className="animate-spin" />
+                  ) : (
+                    <Cloud size={14} />
+                  )}
+                </button>
+                {accessToken && !isSavingDrive && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-surface" />
+                )}
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-20 shadow-lg">
+                  {isSavingDrive ? 'Saving…' : accessToken ? 'Backup to Drive (Connected)' : 'Backup to Drive'}
+                </span>
+              </div>
+
+              {/* 2. Export JSON file */}
+              <div className="relative group">
+                <button
+                  onClick={handleSaveProject}
+                  aria-label="Export JSON"
+                  className="w-9 h-9 rounded-xl bg-surface hover:bg-surface text-ink border border-line flex items-center justify-center transition-all cursor-pointer"
+                >
+                  <Save size={14} className="text-gold" />
+                </button>
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-20 shadow-lg">
+                  Export as JSON file
+                </span>
+              </div>
+
+              {/* 3. Import JSON file */}
+              <div className="relative group">
+                <button
+                  onClick={handleTriggerLoad}
+                  aria-label="Import JSON"
+                  className="w-9 h-9 rounded-xl bg-surface hover:bg-surface text-ink border border-line flex items-center justify-center transition-all cursor-pointer"
+                >
+                  <FolderOpen size={14} className="text-gold" />
+                </button>
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-20 shadow-lg">
+                  Import from JSON file
+                </span>
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleLoadProjectJSON}
+                accept=".json"
+                className="hidden"
+              />
             </div>
-          )}
+
+            {/* 4. Disconnect (only when connected) */}
+            {accessToken && (
+              <div className="relative group">
+                <button
+                  onClick={handleDisconnectDrive}
+                  aria-label="Disconnect Google Drive"
+                  className="w-9 h-9 rounded-xl bg-surface border border-line text-ink-soft hover:text-red-400 hover:border-red-400/50 hover:bg-red-500/5 flex items-center justify-center transition-all cursor-pointer"
+                >
+                  <LogOut size={14} />
+                </button>
+                <span className="pointer-events-none absolute right-0 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-20 shadow-lg">
+                  Disconnect Google Drive
+                </span>
+              </div>
+            )}
+          </div>
 
           {driveError && (
             <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-1.5 text-[10px] text-red-400">
@@ -844,60 +908,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span className="text-[9px]">{driveSuccessMessage}</span>
             </div>
           )}
-
-          <div className="grid grid-cols-2 gap-2">
-            {/* 1. Back up to drive */}
-            <button
-              onClick={handleBackupToDriveClick}
-              disabled={isSavingDrive}
-              className={`py-2 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 border cursor-pointer transition-all ${
-                isSavingDrive
-                  ? 'bg-surface border-line text-ink-soft pointer-events-none'
-                  : 'bg-gold border-gold hover:bg-gold text-ink shadow-sm'
-              }`}
-              title="Back up design to Google Drive"
-            >
-              {isSavingDrive ? (
-                <>
-                  <RefreshCw size={11} className="animate-spin text-ink-soft" />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <Cloud size={12} />
-                  <span>Backup to Drive</span>
-                </>
-              )}
-            </button>
-
-            {/* 2. Export JSON file */}
-            <button
-              onClick={handleSaveProject}
-              className="py-2 px-2 bg-surface hover:bg-surface text-ink border border-line text-[10px] font-bold uppercase rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-              title="Export design as a local JSON file"
-            >
-              <Save size={12} className="text-gold" />
-              <span>Export JSON</span>
-            </button>
-
-            {/* 3. Import JSON file */}
-            <button
-              onClick={handleTriggerLoad}
-              className="col-span-2 py-2 px-2 bg-surface hover:bg-surface text-ink border border-line text-[10px] font-bold uppercase rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-              title="Import a design from a local JSON file"
-              aria-label="Import a design from a local JSON file"
-            >
-              <FolderOpen size={12} className="text-gold" />
-              <span>Import JSON</span>
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleLoadProjectJSON}
-              accept=".json"
-              className="hidden"
-            />
-          </div>
         </div>
 
         {/* Project Notes Container */}
@@ -913,7 +923,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             value={notesDraft}
             onChange={(e) => handleNotesChange(e.target.value)}
             placeholder="Type notes about the project here (e.g. site access instructions, installer notes, bin specs)..."
-            rows={3}
+            rows={9}
             className="w-full bg-surface/80 border border-line focus:border-gold/50 rounded-xl p-2.5 text-xs text-ink-soft placeholder-ink-soft focus:outline-none transition-colors resize-y custom-scrollbar"
           />
         </div>

@@ -7,7 +7,7 @@ import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import { Project, Yard, Asset, BinAsset, generateProjectId, generateAssetId } from '../types';
 import { getCableRecommendation } from '../utils/cableRecommendation';
 import { computeBinCapacityBushels } from '../utils/binCapacity';
-import { Plus, Edit2, Trash2, FolderOpen, Save, MapPin, Cloud, LogOut, RefreshCw, AlertTriangle, Check, Download, FileText, Copy } from 'lucide-react';
+import { Plus, Edit2, Trash2, FolderOpen, Save, MapPin, Cloud, LogOut, RefreshCw, AlertTriangle, Check, Download, FileText, Copy, GripVertical } from 'lucide-react';
 import {
   initAuth,
   googleSignIn,
@@ -48,6 +48,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [isSavingDrive, setIsSavingDrive] = useState(false);
   const [driveSuccessMessage, setDriveSuccessMessage] = useState<string | null>(null);
   const [driveError, setDriveError] = useState<string | null>(null);
+
+  // Yard reordering (drag-to-reorder in the Yards Manager list)
+  const [isReorderingYards, setIsReorderingYards] = useState(false);
+  const [draggedYardId, setDraggedYardId] = useState<number | null>(null);
+  const [dragOverYardId, setDragOverYardId] = useState<number | null>(null);
 
   // Local draft buffer for Project Notes: committing to global project
   // state (and its undo history) on every keystroke made typing sluggish on
@@ -370,6 +375,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         yards: remainingYards,
       };
     });
+  };
+
+  const handleYardDragStart = (yardId: number, e: React.DragEvent) => {
+    setDraggedYardId(yardId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleYardDragOver = (yardId: number, e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (yardId !== dragOverYardId) setDragOverYardId(yardId);
+  };
+
+  const handleYardDrop = (targetYardId: number, e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverYardId(null);
+    const sourceYardId = draggedYardId;
+    setDraggedYardId(null);
+    if (sourceYardId === null || sourceYardId === targetYardId) return;
+
+    onUpdateProject((prev) => {
+      const yards = [...prev.yards];
+      const fromIdx = yards.findIndex((y) => y.id === sourceYardId);
+      const toIdx = yards.findIndex((y) => y.id === targetYardId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      const [moved] = yards.splice(fromIdx, 1);
+      yards.splice(toIdx, 0, moved);
+      return { ...prev, yards };
+    });
+  };
+
+  const handleYardDragEnd = () => {
+    setDraggedYardId(null);
+    setDragOverYardId(null);
   };
 
   // JSON Save / Load
@@ -932,14 +971,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="bg-surface rounded-2xl border border-line p-5 flex flex-col flex-grow overflow-hidden">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-ink">Yards Manager</h3>
-            <button
-              onClick={handleCreateYard}
-              className="px-3 py-1.5 bg-gold hover:bg-gold text-ink text-[10px] font-black uppercase rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <Plus size={12} strokeWidth={3} />
-              Add Yard
-            </button>
+            <div className="flex items-center gap-2">
+              {project.yards.length > 1 && (
+                <button
+                  onClick={() => setIsReorderingYards((v) => !v)}
+                  className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                    isReorderingYards
+                      ? 'bg-gold/20 border-gold/40 text-gold'
+                      : 'border-line text-ink-soft hover:text-ink hover:border-ink-soft/40'
+                  }`}
+                  title={isReorderingYards ? 'Done reordering yards' : 'Reorder yards'}
+                  aria-label={isReorderingYards ? 'Done reordering yards' : 'Reorder yards'}
+                >
+                  <Edit2 size={12} />
+                </button>
+              )}
+              <button
+                onClick={handleCreateYard}
+                className="px-3 py-1.5 bg-gold hover:bg-gold text-ink text-[10px] font-black uppercase rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <Plus size={12} strokeWidth={3} />
+                Add Yard
+              </button>
+            </div>
           </div>
+          {isReorderingYards && (
+            <p className="text-[10px] text-ink-soft font-semibold mb-2 -mt-1.5">
+              Drag a yard by its handle to reorder the list.
+            </p>
+          )}
           <div id="yards-list" className="flex-grow overflow-y-auto space-y-3 pr-1 custom-scrollbar">
             {project.yards.map((yard) => {
               const isActive = yard.id === project.activeYardId;
@@ -949,71 +1009,95 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               return (
                 <div
                   key={yard.id}
-                  onClick={() => onSelectYard(yard.id)}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    onSelectYard(yard.id);
-                    onSwitchTab('planner');
-                  }}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer select-none ${
-                    isActive
+                  draggable={isReorderingYards}
+                  onDragStart={isReorderingYards ? (e) => handleYardDragStart(yard.id, e) : undefined}
+                  onDragOver={isReorderingYards ? (e) => handleYardDragOver(yard.id, e) : undefined}
+                  onDrop={isReorderingYards ? (e) => handleYardDrop(yard.id, e) : undefined}
+                  onDragEnd={isReorderingYards ? handleYardDragEnd : undefined}
+                  onClick={isReorderingYards ? undefined : () => onSelectYard(yard.id)}
+                  onDoubleClick={
+                    isReorderingYards
+                      ? undefined
+                      : (e) => {
+                          e.stopPropagation();
+                          onSelectYard(yard.id);
+                          onSwitchTab('planner');
+                        }
+                  }
+                  className={`p-4 rounded-xl border transition-all select-none ${
+                    isReorderingYards ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                  } ${draggedYardId === yard.id ? 'opacity-40' : ''} ${
+                    dragOverYardId === yard.id && draggedYardId !== yard.id
+                      ? 'border-gold border-2'
+                      : isActive
                       ? 'bg-gold/5 border-gold/30'
                       : 'bg-surface border-line hover:bg-surface'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={`font-bold text-sm ${isActive ? 'text-gold' : 'text-ink'}`}>
+                    <span className={`font-bold text-sm flex items-center gap-1.5 ${isActive ? 'text-gold' : 'text-ink'}`}>
+                      {isReorderingYards && <GripVertical size={13} className="text-ink-soft shrink-0" />}
                       {yard.name}
                     </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => handleEditLocation(yard.id, e)}
-                        className="p-1 hover:text-ink text-ink-soft transition-colors"
-                        title="Edit Yard Location"
-                        aria-label={`Edit location for ${yard.name}`}
-                      >
-                        <MapPin size={12} />
-                      </button>
-                      <button
-                        onClick={(e) => handleRenameYard(yard.id, e)}
-                        className="p-1 hover:text-ink text-ink-soft transition-colors"
-                        title="Rename Yard"
-                        aria-label={`Rename ${yard.name}`}
-                      >
-                        <Edit2 size={12} />
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteYard(yard.id, e)}
-                        className="p-1 hover:text-red-400 text-ink-soft transition-colors"
-                        title="Delete Yard"
-                        aria-label={`Delete ${yard.name}`}
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
+                    {!isReorderingYards && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => handleRenameYard(yard.id, e)}
+                          className="p-1 hover:text-ink text-ink-soft transition-colors"
+                          title="Rename Yard"
+                          aria-label={`Rename ${yard.name}`}
+                        >
+                          <Edit2 size={12} />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteYard(yard.id, e)}
+                          className="p-1 hover:text-red-400 text-ink-soft transition-colors"
+                          title="Delete Yard"
+                          aria-label={`Delete ${yard.name}`}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   {yard.location ? (
                     <div className="text-[11px] text-gold/85 mt-1 flex items-center gap-1.5 font-medium leading-none">
                       <MapPin size={10} className="shrink-0 text-gold" />
-                      <span className="truncate">{yard.location}</span>
+                      <span className="truncate flex-1">{yard.location}</span>
+                      {!isReorderingYards && (
+                        <button
+                          onClick={(e) => handleEditLocation(yard.id, e)}
+                          className="p-0.5 text-ink-soft hover:text-gold transition-colors shrink-0"
+                          title="Edit Yard Location"
+                          aria-label={`Edit location for ${yard.name}`}
+                        >
+                          <Edit2 size={10} />
+                        </button>
+                      )}
                     </div>
                   ) : (
-                    <div 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditLocation(yard.id, e);
-                      }}
-                      className="text-[10px] text-ink-soft hover:text-ink-soft italic mt-1 flex items-center gap-1 cursor-pointer select-none"
-                    >
+                    <div className="text-[10px] text-ink-soft italic mt-1 flex items-center gap-1.5 select-none">
                       <MapPin size={10} className="shrink-0 text-ink" />
-                      <span>Add Location info...</span>
+                      <span>No location set</span>
+                      {!isReorderingYards && (
+                        <button
+                          onClick={(e) => handleEditLocation(yard.id, e)}
+                          className="p-0.5 text-ink-soft hover:text-gold transition-colors shrink-0"
+                          title="Add Yard Location"
+                          aria-label={`Add location for ${yard.name}`}
+                        >
+                          <Edit2 size={10} />
+                        </button>
+                      )}
                     </div>
                   )}
                   <div className="text-[10px] text-ink-soft font-bold uppercase mt-2.5 flex justify-between border-t border-line/40 pt-1.5">
                     <span>{totalBinsInYard} Bins</span>
                     <span>{totalAssetsInYard} Assets Total</span>
                   </div>
-                  <p className="text-[9px] text-ink-soft mt-1.5 font-bold">Double-click to open in planner</p>
+                  <p className="text-[9px] text-ink-soft mt-1.5 font-bold">
+                    {isReorderingYards ? 'Drag to reorder' : 'Double-click to open in planner'}
+                  </p>
                 </div>
               );
             })}

@@ -11,7 +11,7 @@ import { LandingBackground } from './components/LandingBackground';
 import { CableEstimatorView } from './components/CableEstimatorView';
 import { BinSpecsView } from './components/BinSpecsView';
 import { useDialogs } from './components/ui/DialogProvider';
-import { LayoutDashboard, Map as MapIcon, Download, Loader2, Plus, FolderOpen, Cloud, RefreshCw, AlertTriangle, Play, ChevronRight, FileCode, LogOut, Search, X, Github, GitBranch, Home, FileText, Compass, Copy, Check, Pencil } from 'lucide-react';
+import { LayoutDashboard, Map as MapIcon, Download, Loader2, Plus, FolderOpen, Cloud, RefreshCw, AlertTriangle, Play, ChevronRight, FileCode, LogOut, Search, X, Github, GitBranch, Home, FileText, Compass, Copy, Check, Pencil, Save } from 'lucide-react';
 import {
   initAuth,
   googleSignIn,
@@ -163,6 +163,15 @@ export default function App() {
     navigator.clipboard.writeText(project.id);
     setCopiedId(true);
     setTimeout(() => setCopiedId(false), 2000);
+  };
+
+  const [copiedCustomerField, setCopiedCustomerField] = useState<string | null>(null);
+
+  const handleCopyCustomerField = (fieldKey: string, value: string) => {
+    if (!value) return;
+    navigator.clipboard.writeText(value).catch(() => {});
+    setCopiedCustomerField(fieldKey);
+    setTimeout(() => setCopiedCustomerField((prev) => (prev === fieldKey ? null : prev)), 2000);
   };
 
   // Undo history stack state
@@ -577,6 +586,48 @@ export default function App() {
       } else {
         setLandingDriveError(err.message || 'Google Drive connection failed');
       }
+    }
+  };
+
+  // Manual "save now" button in the sidebar, available on every screen
+  // (the sidebar renders once at the App level). Reuses the same Drive
+  // connection/save path as the periodic autosave effect below, so a
+  // successful manual save also resets the autosave clock.
+  const handleManualSave = async () => {
+    let token = landingToken;
+    if (!token) {
+      try {
+        const result = await googleSignIn();
+        if (!result) return;
+        setLandingUser(result.user);
+        setLandingToken(result.accessToken);
+        fetchLandingDriveFiles(result.accessToken);
+        token = result.accessToken;
+      } catch (err: any) {
+        toast(err.message || 'Google Drive connection failed', 'error');
+        return;
+      }
+    }
+
+    setIsAutoSaving(true);
+    setAutoSaveError(null);
+    try {
+      const savedFileId = await saveProjectToDrive(token, project);
+      if (savedFileId && project.driveFileId !== savedFileId) {
+        updateProjectWithHistory((prev) => ({ ...prev, driveFileId: savedFileId }));
+      }
+      setLastAutoSaved(new Date());
+      toast('Saved to Google Drive.', 'success');
+    } catch (err: any) {
+      setAutoSaveError(err.message || 'Save failed');
+      toast(err.message || 'Failed to save to Google Drive.', 'error');
+      if (err.message?.includes('expired') || err.message?.includes('re-authorize') || err.message?.includes('401') || err.status === 401) {
+        logout().catch(console.error);
+        setLandingToken(null);
+        setLandingUser(null);
+      }
+    } finally {
+      setIsAutoSaving(false);
     }
   };
 
@@ -1017,6 +1068,18 @@ export default function App() {
             <span id="brand-logo-text" className="text-xl font-black text-ink tracking-tight group-hover:text-gold transition-colors font-display">
               Grain<span className="text-gold">Link</span>
             </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleManualSave();
+              }}
+              disabled={isAutoSaving}
+              className="p-1.5 rounded-lg text-ink-soft hover:text-gold hover:bg-gold-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+              title={landingToken ? 'Save to Google Drive now' : 'Connect Google Drive and save'}
+              aria-label="Save to Google Drive now"
+            >
+              {isAutoSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            </button>
           </div>
 
           {/* Minimalist Auto-Save Indicator */}
@@ -1240,15 +1303,31 @@ export default function App() {
 
               <div className="space-y-4">
                 {([
-                  { key: 'name', label: 'Customer Name', placeholder: '', type: 'text' },
-                  { key: 'phone', label: 'Customer Phone', placeholder: '', type: 'text' },
-                  { key: 'email', label: 'Customer Email', placeholder: 'customer@email.com', type: 'email' },
-                  { key: 'location', label: 'Customer Location / Address', placeholder: 'e.g. Regina, SK', type: 'text' },
+                  { key: 'name', label: 'Customer Name', placeholder: '', type: 'text', copyable: true },
+                  { key: 'phone', label: 'Customer Phone', placeholder: '', type: 'text', copyable: false },
+                  { key: 'email', label: 'Customer Email', placeholder: 'customer@email.com', type: 'email', copyable: true },
+                  { key: 'location', label: 'Customer Location / Address', placeholder: 'e.g. Regina, SK', type: 'text', copyable: true },
                 ] as const).map((field) => (
                   <div key={field.key}>
-                    <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1">
-                      {field.label}
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider">
+                        {field.label}
+                      </label>
+                      {field.copyable && (project.customer as any)[field.key] && (
+                        <button
+                          onClick={() => handleCopyCustomerField(field.key, (project.customer as any)[field.key])}
+                          className="p-1 text-ink-soft hover:text-gold transition-colors cursor-pointer"
+                          title={`Copy ${field.label}`}
+                          aria-label={`Copy ${field.label}`}
+                        >
+                          {copiedCustomerField === field.key ? (
+                            <Check size={12} className="text-emerald-400" />
+                          ) : (
+                            <Copy size={12} />
+                          )}
+                        </button>
+                      )}
+                    </div>
                     {isEditingCustomer ? (
                       <input
                         type={field.type}

@@ -11,7 +11,7 @@ import { LandingBackground } from './components/LandingBackground';
 import { CableEstimatorView } from './components/CableEstimatorView';
 import { BinSpecsView } from './components/BinSpecsView';
 import { useDialogs } from './components/ui/DialogProvider';
-import { LayoutDashboard, Map as MapIcon, Download, Loader2, Plus, FolderOpen, Cloud, RefreshCw, AlertTriangle, Play, ChevronRight, FileCode, LogOut, Search, X, Github, GitBranch, Home, FileText, Compass, Copy, Check, Pencil } from 'lucide-react';
+import { LayoutDashboard, Map as MapIcon, Download, Loader2, Plus, FolderOpen, Cloud, RefreshCw, AlertTriangle, Play, ChevronRight, FileCode, LogOut, Search, X, Github, GitBranch, Home, FileText, Compass, Copy, Check, Pencil, Save } from 'lucide-react';
 import {
   initAuth,
   googleSignIn,
@@ -580,6 +580,48 @@ export default function App() {
     }
   };
 
+  // Manual "save now" button in the sidebar, available on every screen
+  // (the sidebar renders once at the App level). Reuses the same Drive
+  // connection/save path as the periodic autosave effect below, so a
+  // successful manual save also resets the autosave clock.
+  const handleManualSave = async () => {
+    let token = landingToken;
+    if (!token) {
+      try {
+        const result = await googleSignIn();
+        if (!result) return;
+        setLandingUser(result.user);
+        setLandingToken(result.accessToken);
+        fetchLandingDriveFiles(result.accessToken);
+        token = result.accessToken;
+      } catch (err: any) {
+        toast(err.message || 'Google Drive connection failed', 'error');
+        return;
+      }
+    }
+
+    setIsAutoSaving(true);
+    setAutoSaveError(null);
+    try {
+      const savedFileId = await saveProjectToDrive(token, project);
+      if (savedFileId && project.driveFileId !== savedFileId) {
+        updateProjectWithHistory((prev) => ({ ...prev, driveFileId: savedFileId }));
+      }
+      setLastAutoSaved(new Date());
+      toast('Saved to Google Drive.', 'success');
+    } catch (err: any) {
+      setAutoSaveError(err.message || 'Save failed');
+      toast(err.message || 'Failed to save to Google Drive.', 'error');
+      if (err.message?.includes('expired') || err.message?.includes('re-authorize') || err.message?.includes('401') || err.status === 401) {
+        logout().catch(console.error);
+        setLandingToken(null);
+        setLandingUser(null);
+      }
+    } finally {
+      setIsAutoSaving(false);
+    }
+  };
+
   const handleDisconnectLandingDrive = async () => {
     setLandingDriveError(null);
     try {
@@ -1017,6 +1059,18 @@ export default function App() {
             <span id="brand-logo-text" className="text-xl font-black text-ink tracking-tight group-hover:text-gold transition-colors font-display">
               Grain<span className="text-gold">Link</span>
             </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleManualSave();
+              }}
+              disabled={isAutoSaving}
+              className="p-1.5 rounded-lg text-ink-soft hover:text-gold hover:bg-gold-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+              title={landingToken ? 'Save to Google Drive now' : 'Connect Google Drive and save'}
+              aria-label="Save to Google Drive now"
+            >
+              {isAutoSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            </button>
           </div>
 
           {/* Minimalist Auto-Save Indicator */}

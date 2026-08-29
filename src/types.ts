@@ -92,6 +92,7 @@ export interface Yard {
   id: number;
   name: string;
   location?: string;
+  notes?: string;
   bins: Asset[];
   wires?: WireConnection[];
 }

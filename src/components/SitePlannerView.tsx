@@ -7,7 +7,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { Project, Yard, Asset, BinAsset, MarkerAsset, ZoneAsset, BinSpecModel, WireConnection, generateAssetId } from '../types';
 import { getCableRecommendation } from '../utils/cableRecommendation';
 import { BIN_DATABASE } from '../data/binDatabase';
-import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search, Lock, Unlock } from 'lucide-react';
+import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search, Lock, Unlock, MousePointer2, Hand, MoveHorizontal, MoveVertical, Grid3x3, Magnet, Zap } from 'lucide-react';
 
 interface SitePlannerViewProps {
   project: Project;
@@ -1930,105 +1930,38 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
       {/* Planner Sidebar */}
       <aside className="w-52 bg-surface border-r border-line flex flex-col z-10 shrink-0">
         <div className="flex-grow overflow-y-auto p-3.5 space-y-4 bg-surface custom-scrollbar">
-          {/* Planner Tools Section */}
-          <section>
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-ink-soft mb-2 flex items-center gap-2">
-              Planner Tools
-            </h2>
-            <div className="grid grid-cols-2 gap-1.5 w-full">
-              <button
-                onClick={() => setSelectionMode('select')}
-                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border transition-all text-xs font-bold cursor-pointer ${
-                  selectionMode === 'select'
-                    ? 'border-gold bg-gold/20 text-gold'
-                    : 'border-line bg-surface hover:border-gold/50 hover:bg-gold/5 text-ink-soft'
-                }`}
-                title="Select and Drag assets. Shift+Click or drag box to select multiple."
-              >
-                <span className="font-bold text-xs">🖱️</span>
-                <span className="text-[10px] font-bold">Select</span>
-              </button>
-              <button
-                onClick={() => setSelectionMode('pan')}
-                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border transition-all text-xs font-bold cursor-pointer ${
-                  selectionMode === 'pan'
-                    ? 'border-gold bg-gold/20 text-gold'
-                    : 'border-line bg-surface hover:border-gold/50 hover:bg-gold/5 text-ink-soft'
-                }`}
-                title="Pan Canvas. Click and drag background to pan."
-              >
-                <span className="font-bold text-xs">✋</span>
-                <span className="text-[10px] font-bold">Pan</span>
-              </button>
-            </div>
-
-            {/* Distribution Quick Tools */}
-            <div className={`mt-2.5 space-y-1 ${editLockedClass}`}>
-              <div className="text-[9px] font-black text-gold uppercase tracking-wider mb-1 flex items-center justify-between">
-                <span>Distribution Tools</span>
-                <span className="text-[8.5px] text-ink-soft font-normal">
-                  {selectedAssetIds.length >= 2 ? `${selectedAssetIds.length} Sel` : 'All Bins'}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
+          {/* Multi-select actions (Select/Pan, Distribution, Snap, Reset View,
+              and Wire Thickness all now live in the top toolbar) */}
+          {selectedAssetIds.length > 1 && (
+            <div className="p-2 bg-surface border border-line rounded-lg space-y-2">
+              <div className="text-[10px] text-ink-soft font-bold flex justify-between items-center">
+                <span>{selectedAssetIds.length} Assets Selected</span>
                 <button
-                  onClick={() => handleDistributeAssets('horizontal')}
-                  className="py-1.5 px-2 bg-gold/15 hover:bg-gold/25 text-gold border border-gold/30 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm"
-                  title={
-                    selectedAssetIds.length >= 2
-                      ? `Distribute ${selectedAssetIds.length} selected assets evenly horizontally`
-                      : 'Distribute all grain bins evenly horizontally'
-                  }
+                  onClick={() => handleSetSelectedAssetIds([])}
+                  className="text-[9px] text-ink-soft hover:text-ink-soft font-normal underline cursor-pointer"
                 >
-                  <span>↔️</span>
-                  <span>Horizontally</span>
+                  Clear
+                </button>
+              </div>
+
+              <div className={`flex gap-1.5 ${editLockedClass}`}>
+                <button
+                  onClick={handleDuplicateAsset}
+                  className="flex-1 py-1 bg-surface hover:bg-line text-ink-soft border border-line rounded text-[10px] font-extrabold transition-colors cursor-pointer text-center"
+                  title="Duplicate selected assets"
+                >
+                  Duplicate
                 </button>
                 <button
-                  onClick={() => handleDistributeAssets('vertical')}
-                  className="py-1.5 px-2 bg-gold/15 hover:bg-gold/25 text-gold border border-gold/30 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm"
-                  title={
-                    selectedAssetIds.length >= 2
-                      ? `Distribute ${selectedAssetIds.length} selected assets evenly vertically`
-                      : 'Distribute all grain bins evenly vertically'
-                  }
+                  onClick={handleDeleteAsset}
+                  className="flex-1 py-1 bg-red-950/40 hover:bg-red-950/60 text-red-400 border border-red-900/50 rounded text-[10px] font-extrabold transition-colors cursor-pointer text-center"
+                  title="Delete selected assets"
                 >
-                  <span>↕️</span>
-                  <span>Vertically</span>
+                  Delete
                 </button>
               </div>
             </div>
-
-            {selectedAssetIds.length > 1 && (
-              <div className="mt-2.5 p-2 bg-surface border border-line rounded-lg space-y-2">
-                <div className="text-[10px] text-ink-soft font-bold flex justify-between items-center">
-                  <span>{selectedAssetIds.length} Assets Selected</span>
-                  <button
-                    onClick={() => handleSetSelectedAssetIds([])}
-                    className="text-[9px] text-ink-soft hover:text-ink-soft font-normal underline cursor-pointer"
-                  >
-                    Clear
-                  </button>
-                </div>
-
-                <div className={`flex gap-1.5 ${editLockedClass}`}>
-                  <button
-                    onClick={handleDuplicateAsset}
-                    className="flex-1 py-1 bg-surface hover:bg-line text-ink-soft border border-line rounded text-[10px] font-extrabold transition-colors cursor-pointer text-center"
-                    title="Duplicate selected assets"
-                  >
-                    Duplicate
-                  </button>
-                  <button
-                    onClick={handleDeleteAsset}
-                    className="flex-1 py-1 bg-red-950/40 hover:bg-red-950/60 text-red-400 border border-red-900/50 rounded text-[10px] font-extrabold transition-colors cursor-pointer text-center"
-                    title="Delete selected assets"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            )}
-          </section>
+          )}
 
           {/* Markers and Zones */}
           <section>
@@ -2702,12 +2635,14 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
           );
         })()}
 
-        {/* Yard Indicator / Quick Switcher HUD */}
-        <div className="absolute top-6 left-6 flex flex-wrap items-center gap-3">
-          <div className="bg-surface/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-line shadow-xl flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-gold animate-pulse"></span>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-ink-soft uppercase tracking-wider">Yard:</span>
+        {/* Unified Top Toolbar: yard/location/scale on the left, every tool
+            as a hover-labeled icon button in the center, contextual
+            wiring/selection status on the right. */}
+        <div className="absolute top-0 left-0 right-0 z-20 bg-surface/95 backdrop-blur-md border-b border-line shadow-md px-3 py-2 flex items-center justify-between gap-3 flex-wrap">
+          {/* Left: Yard switcher, location, scale */}
+          <div className="flex items-center gap-2 shrink-0 min-w-0">
+            <div className="flex items-center gap-1.5 bg-paper/70 rounded-lg pl-2 pr-1.5 py-1 border border-line shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse shrink-0" />
               <select
                 value={project.activeYardId || ''}
                 onChange={(e) => {
@@ -2715,7 +2650,8 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                   onUpdateProject((prev) => ({ ...prev, activeYardId: val }));
                   onSelectAsset(null);
                 }}
-                className="bg-transparent text-xs font-black text-ink outline-none cursor-pointer"
+                title="Switch active yard"
+                className="bg-transparent text-xs font-black text-ink outline-none cursor-pointer max-w-[130px]"
               >
                 {project.yards.map((yard) => (
                   <option key={yard.id} value={yard.id} className="bg-surface text-ink">
@@ -2724,67 +2660,231 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                 ))}
               </select>
             </div>
-          </div>
-          {activeYard?.location && (
-            <div className="bg-surface/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-line shadow-xl flex items-center gap-2 max-w-[200px] sm:max-w-[300px]">
-              <MapPin size={12} className="text-gold shrink-0" />
-              <span className="text-[10px] font-bold text-ink-soft truncate uppercase tracking-widest">
-                {activeYard.location}
-              </span>
-            </div>
-          )}
-          <div className="bg-surface/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-line shadow-xl flex items-center gap-2">
-            <span id="scale-indicator" className="text-[10px] font-bold text-ink-soft uppercase tracking-widest">
-              {Math.round(view.scale * 100)}% Scale
+
+            {activeYard?.location && (
+              <div
+                className="hidden md:flex items-center gap-1.5 text-[10px] font-bold text-ink-soft uppercase tracking-wider min-w-0 max-w-[180px]"
+                title={activeYard.location}
+              >
+                <MapPin size={11} className="text-gold shrink-0" />
+                <span className="truncate">{activeYard.location}</span>
+              </div>
+            )}
+
+            <span
+              id="scale-indicator"
+              className="hidden sm:inline text-[10px] font-bold text-ink-soft uppercase tracking-widest shrink-0"
+            >
+              {Math.round(view.scale * 100)}%
             </span>
           </div>
 
-          {selectedAssetIds.length >= 2 && (
-            <div className="bg-gold-dark/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-gold/40 shadow-xl flex items-center gap-2">
-              <span className="text-[10px] font-extrabold text-gold uppercase tracking-widest flex items-center gap-1">
-                <span>{selectedAssetIds.length} Selected</span>
+          {/* Center: tool icons, each with a hover tooltip */}
+          <div className="flex items-center gap-1 flex-wrap justify-center">
+            <div className="relative group">
+              <button
+                onClick={() => setEditMode((prev) => !prev)}
+                aria-label="Toggle Edit Mode"
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
+                  editMode
+                    ? 'bg-red-500/15 border-red-500/40 text-red-400 hover:bg-red-500/25'
+                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                }`}
+              >
+                {editMode ? <Unlock size={14} /> : <Lock size={14} />}
+              </button>
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                {editMode ? 'Edit Mode: ON — click to lock layout' : 'Edit Mode: OFF — click to unlock editing'}
               </span>
-              <div className="h-3.5 w-px bg-gold/30 mx-0.5" />
+            </div>
+
+            <div className="w-px h-5 bg-line mx-1" />
+
+            <div className="relative group">
+              <button
+                onClick={() => setSelectionMode('select')}
+                aria-label="Select tool"
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
+                  selectionMode === 'select'
+                    ? 'border-gold bg-gold/20 text-gold'
+                    : 'border-line bg-surface hover:border-gold/50 hover:bg-gold/5 text-ink-soft'
+                }`}
+              >
+                <MousePointer2 size={14} />
+              </button>
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                Select &amp; Drag (Shift+Click or drag a box to multi-select)
+              </span>
+            </div>
+            <div className="relative group">
+              <button
+                onClick={() => setSelectionMode('pan')}
+                aria-label="Pan tool"
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
+                  selectionMode === 'pan'
+                    ? 'border-gold bg-gold/20 text-gold'
+                    : 'border-line bg-surface hover:border-gold/50 hover:bg-gold/5 text-ink-soft'
+                }`}
+              >
+                <Hand size={14} />
+              </button>
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                Pan Canvas (click and drag background)
+              </span>
+            </div>
+
+            <div className="w-px h-5 bg-line mx-1" />
+
+            <div className={`relative group ${editLockedClass}`}>
               <button
                 onClick={() => handleDistributeAssets('horizontal')}
-                className="bg-gold hover:bg-gold text-ink px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow cursor-pointer flex items-center gap-1"
-                title="Distribute selected objects evenly horizontally"
+                aria-label="Distribute Horizontally"
+                className="w-8 h-8 rounded-lg border border-line bg-surface hover:border-gold/50 hover:bg-gold/10 text-ink-soft hover:text-gold flex items-center justify-center transition-all cursor-pointer"
               >
-                <span>↔️</span>
-                <span>Distribute Horizontally</span>
+                <MoveHorizontal size={14} />
               </button>
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                Distribute {selectedAssetIds.length >= 2 ? `${selectedAssetIds.length} selected` : 'all bins'} evenly horizontally
+              </span>
+            </div>
+            <div className={`relative group ${editLockedClass}`}>
               <button
                 onClick={() => handleDistributeAssets('vertical')}
-                className="bg-surface hover:bg-surface text-gold border border-gold/30 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
-                title="Distribute selected objects evenly vertically"
+                aria-label="Distribute Vertically"
+                className="w-8 h-8 rounded-lg border border-line bg-surface hover:border-gold/50 hover:bg-gold/10 text-ink-soft hover:text-gold flex items-center justify-center transition-all cursor-pointer"
               >
-                <span>↕️</span>
-                <span>Distribute Vertically</span>
+                <MoveVertical size={14} />
               </button>
-            </div>
-          )}
-          {wiringState?.active ? (
-            <div className="bg-purple-950/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-purple-500/30 shadow-xl flex items-center gap-2 animate-pulse">
-              <span className="text-purple-400">⚡</span>
-              <span className="text-[10px] font-black text-purple-300 uppercase tracking-widest">
-                {wiringState.fromAssetId === null
-                  ? 'Wiring Mode: Click on any Unit to START'
-                  : 'Wiring Mode: Click destination Unit to CONNECT'}
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                Distribute {selectedAssetIds.length >= 2 ? `${selectedAssetIds.length} selected` : 'all bins'} evenly vertically
               </span>
-              <button
-                onClick={() => setWiringState(null)}
-                className="ml-2 hover:bg-purple-900 text-purple-300 rounded px-1.5 py-0.5 text-[9px] font-black border border-purple-400/30 cursor-pointer"
-              >
-                Cancel
-              </button>
             </div>
-          ) : (
-            <div className="hidden sm:flex bg-surface/85 backdrop-blur-md px-4 py-2.5 rounded-xl border border-line shadow-xl items-center gap-2">
-              <span className="text-[10px] font-bold text-gold uppercase tracking-widest">
+
+            <div className="w-px h-5 bg-line mx-1" />
+
+            <div className="relative group">
+              <button
+                onClick={() => setSnapToGrid(!snapToGrid)}
+                aria-label="Toggle Grid Snap"
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
+                  snapToGrid
+                    ? 'bg-gold/10 border-gold/30 text-gold hover:bg-gold/20'
+                    : 'bg-surface border-line text-ink-soft hover:bg-surface'
+                }`}
+              >
+                <Grid3x3 size={14} />
+              </button>
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                Grid Snap: {snapToGrid ? 'ON' : 'OFF'}
+              </span>
+            </div>
+            <div className="relative group">
+              <button
+                onClick={() => setSnapToObject(!snapToObject)}
+                aria-label="Toggle Object Snap"
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
+                  snapToObject
+                    ? 'bg-gold/10 border-gold/30 text-gold hover:bg-gold/20'
+                    : 'bg-surface border-line text-ink-soft hover:bg-surface'
+                }`}
+              >
+                <Magnet size={14} />
+              </button>
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                Object Snap: {snapToObject ? 'ON' : 'OFF'}
+              </span>
+            </div>
+
+            <div className="relative group">
+              <button
+                onClick={() => setShowWireSettings((prev) => !prev)}
+                aria-label="Wire Thickness"
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
+                  showWireSettings
+                    ? 'bg-gold/10 border-gold/30 text-gold hover:bg-gold/20'
+                    : 'bg-surface border-line text-ink-soft hover:bg-surface'
+                }`}
+              >
+                <Settings size={14} />
+              </button>
+              {!showWireSettings && (
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                  Wire Thickness
+                </span>
+              )}
+
+              {showWireSettings && (
+                <div
+                  className="absolute top-full right-0 mt-2 bg-surface border border-line rounded-xl shadow-lg p-4 w-56 z-30"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-black uppercase text-ink-soft tracking-wider">
+                      Wire Thickness
+                    </span>
+                    <span className="text-xs font-bold text-ink font-mono">{wireThickness.toFixed(1)}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={6}
+                    step={0.5}
+                    value={wireThickness}
+                    onChange={(e) => setWireThickness(parseFloat(e.target.value))}
+                    className="w-full accent-gold cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[9px] text-ink-soft font-bold uppercase mt-1">
+                    <span>Thin</span>
+                    <span>Thick</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="w-px h-5 bg-line mx-1" />
+
+            <div className="relative group">
+              <button
+                onClick={resetView}
+                aria-label="Reset View"
+                className="w-8 h-8 rounded-lg border border-line bg-surface hover:bg-surface text-ink-soft flex items-center justify-center transition-all cursor-pointer"
+              >
+                <RefreshCw size={14} />
+              </button>
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                Reset View
+              </span>
+            </div>
+          </div>
+
+          {/* Right: contextual status (wiring mode / cable hint / selection count) */}
+          <div className="flex items-center gap-2 shrink-0">
+            {selectedAssetIds.length >= 2 && (
+              <span className="text-[10px] font-extrabold text-gold bg-gold/10 border border-gold/30 px-2 py-1 rounded-lg uppercase tracking-wider">
+                {selectedAssetIds.length} Selected
+              </span>
+            )}
+            {wiringState?.active ? (
+              <div className="flex items-center gap-2 bg-purple-950/85 px-3 py-1.5 rounded-lg border border-purple-500/30 animate-pulse">
+                <Zap size={12} className="text-purple-400 shrink-0" />
+                <span className="text-[10px] font-black text-purple-300 uppercase tracking-wider">
+                  {wiringState.fromAssetId === null
+                    ? 'Click a unit to START wiring'
+                    : 'Click destination to CONNECT'}
+                </span>
+                <button
+                  onClick={() => setWiringState(null)}
+                  className="hover:bg-purple-900 text-purple-300 rounded px-1.5 py-0.5 text-[9px] font-black border border-purple-400/30 cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <span className="hidden lg:inline text-[10px] font-bold text-gold uppercase tracking-widest">
                 Click Bin to Design Cables
               </span>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Create Wire Connection Label Overlay */}
@@ -2840,92 +2940,6 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
           </div>
         )}
 
-        <div className="absolute bottom-6 left-6 flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => setEditMode((prev) => !prev)}
-            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider cursor-pointer shadow-lg ${
-              editMode
-                ? 'bg-red-500/15 border-red-500/40 text-red-400 hover:bg-red-500/25'
-                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
-            }`}
-            title={editMode ? 'Edit Mode is ON — click to lock the layout' : 'Edit Mode is OFF — click to unlock and make changes'}
-          >
-            {editMode ? <Unlock size={13} /> : <Lock size={13} />}
-            Edit Mode: {editMode ? 'ON' : 'OFF'}
-          </button>
-          <button
-            onClick={resetView}
-            className="bg-surface hover:bg-surface text-ink-soft px-4 py-2.5 rounded-xl border border-line transition-colors shadow-lg flex items-center gap-2 text-xs font-bold uppercase tracking-wider cursor-pointer"
-          >
-            Reset View
-          </button>
-          <button
-            onClick={() => setSnapToGrid(!snapToGrid)}
-            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider cursor-pointer shadow-lg ${
-              snapToGrid
-                ? 'bg-gold/10 border-gold/30 text-gold hover:bg-gold/20'
-                : 'bg-surface border-line text-ink-soft hover:bg-surface'
-            }`}
-            title="Toggle Snap to Grid Lines"
-          >
-            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${snapToGrid ? 'bg-gold animate-pulse' : 'bg-line'}`} />
-            Grid Snap: {snapToGrid ? 'ON' : 'OFF'}
-          </button>
-          <button
-            onClick={() => setSnapToObject(!snapToObject)}
-            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider cursor-pointer shadow-lg ${
-              snapToObject
-                ? 'bg-gold/10 border-gold/30 text-gold hover:bg-gold/20'
-                : 'bg-surface border-line text-ink-soft hover:bg-surface'
-            }`}
-            title="Toggle Snap to Other Objects and Alignment Guidelines"
-          >
-            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${snapToObject ? 'bg-gold animate-pulse' : 'bg-line'}`} />
-            Object Snap: {snapToObject ? 'ON' : 'OFF'}
-          </button>
-
-          <div className="relative">
-            <button
-              onClick={() => setShowWireSettings((prev) => !prev)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider cursor-pointer shadow-lg ${
-                showWireSettings
-                  ? 'bg-gold/10 border-gold/30 text-gold hover:bg-gold/20'
-                  : 'bg-surface border-line text-ink-soft hover:bg-surface'
-              }`}
-              title="Adjust wire thickness"
-            >
-              <Settings size={13} />
-              Wire Thickness
-            </button>
-
-            {showWireSettings && (
-              <div
-                className="absolute bottom-full left-0 mb-2 bg-surface border border-line rounded-xl shadow-lg p-4 w-56"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase text-ink-soft tracking-wider">
-                    Wire Thickness
-                  </span>
-                  <span className="text-xs font-bold text-ink font-mono">{wireThickness.toFixed(1)}px</span>
-                </div>
-                <input
-                  type="range"
-                  min={1}
-                  max={6}
-                  step={0.5}
-                  value={wireThickness}
-                  onChange={(e) => setWireThickness(parseFloat(e.target.value))}
-                  className="w-full accent-gold cursor-pointer"
-                />
-                <div className="flex justify-between text-[9px] text-ink-soft font-bold uppercase mt-1">
-                  <span>Thin</span>
-                  <span>Thick</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );

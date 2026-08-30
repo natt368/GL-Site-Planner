@@ -7,7 +7,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { Project, Yard, Asset, BinAsset, MarkerAsset, ZoneAsset, BinSpecModel, WireConnection, generateAssetId } from '../types';
 import { getCableRecommendation } from '../utils/cableRecommendation';
 import { BIN_DATABASE } from '../data/binDatabase';
-import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search, Lock, Unlock, MousePointer2, Hand, MoveHorizontal, MoveVertical, Grid3x3, Magnet, Zap, Undo2 } from 'lucide-react';
+import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search, Lock, Unlock, MousePointer2, Hand, MoveHorizontal, MoveVertical, Grid3x3, Magnet, Zap, Undo2, AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd } from 'lucide-react';
 
 interface SitePlannerViewProps {
   project: Project;
@@ -1230,6 +1230,57 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
       }));
     },
     [activeYard, selectedAssetIds, selectedAssetId, snapToGrid, onUpdateProject, editMode]
+  );
+
+  const handleAlignAssets = useCallback(
+    (mode: 'left' | 'center' | 'right') => {
+      if (!activeYard || !editMode || selectedAssetIds.length < 2) return;
+
+      const targets = activeYard.bins.filter((b) => selectedAssetIds.includes(b.id));
+      if (targets.length < 2) return;
+
+      // Half-width of each asset's footprint along the x-axis, so "left"/
+      // "right" line up actual edges rather than just center points.
+      const getHalfWidth = (b: Asset) => {
+        if (b.type === 'zone') {
+          return ((parseFloat((b as ZoneAsset).width) || 20) * BASE_SCALE) / 2;
+        }
+        const defaultDia = b.type === 'junction-box' || b.type === 'fan-control' ? 6 : 5;
+        const dia = parseFloat((b as any).diameter) || defaultDia;
+        return (dia / 2) * BASE_SCALE;
+      };
+
+      let referenceX: number;
+      if (mode === 'center') {
+        referenceX = targets.reduce((sum, b) => sum + b.x, 0) / targets.length;
+      } else if (mode === 'left') {
+        referenceX = Math.min(...targets.map((b) => b.x - getHalfWidth(b)));
+      } else {
+        referenceX = Math.max(...targets.map((b) => b.x + getHalfWidth(b)));
+      }
+
+      const updatedMap = new Map<number, number>();
+      targets.forEach((b) => {
+        let newX: number;
+        if (mode === 'center') newX = referenceX;
+        else if (mode === 'left') newX = referenceX + getHalfWidth(b);
+        else newX = referenceX - getHalfWidth(b);
+        if (snapToGrid) newX = Math.round(newX / GRID_SIZE) * GRID_SIZE;
+        updatedMap.set(b.id, newX);
+      });
+
+      onUpdateProject((prev) => ({
+        ...prev,
+        yards: prev.yards.map((y) => {
+          if (y.id !== prev.activeYardId) return y;
+          return {
+            ...y,
+            bins: y.bins.map((b) => (updatedMap.has(b.id) ? { ...b, x: updatedMap.get(b.id)! } : b)),
+          };
+        }),
+      }));
+    },
+    [activeYard, selectedAssetIds, snapToGrid, onUpdateProject, editMode]
   );
 
   // Setup Keyboard Shortcuts
@@ -2754,6 +2805,60 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
               </button>
               <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
                 Pan Canvas (click and drag background)
+              </span>
+            </div>
+
+            <div className="w-px h-5 bg-line mx-1" />
+
+            <div className={`relative group ${editLockedClass}`}>
+              <button
+                onClick={() => handleAlignAssets('left')}
+                disabled={selectedAssetIds.length < 2}
+                aria-label="Align Left"
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${
+                  selectedAssetIds.length < 2
+                    ? 'border-line bg-surface text-ink-soft/40 cursor-not-allowed'
+                    : 'border-line bg-surface hover:border-gold/50 hover:bg-gold/10 text-ink-soft hover:text-gold cursor-pointer'
+                }`}
+              >
+                <AlignHorizontalJustifyStart size={14} />
+              </button>
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                {selectedAssetIds.length >= 2 ? `Align ${selectedAssetIds.length} selected to their left edge` : 'Select 2+ assets to align left'}
+              </span>
+            </div>
+            <div className={`relative group ${editLockedClass}`}>
+              <button
+                onClick={() => handleAlignAssets('center')}
+                disabled={selectedAssetIds.length < 2}
+                aria-label="Align Center"
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${
+                  selectedAssetIds.length < 2
+                    ? 'border-line bg-surface text-ink-soft/40 cursor-not-allowed'
+                    : 'border-line bg-surface hover:border-gold/50 hover:bg-gold/10 text-ink-soft hover:text-gold cursor-pointer'
+                }`}
+              >
+                <AlignHorizontalJustifyCenter size={14} />
+              </button>
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                {selectedAssetIds.length >= 2 ? `Align ${selectedAssetIds.length} selected to their center` : 'Select 2+ assets to align center'}
+              </span>
+            </div>
+            <div className={`relative group ${editLockedClass}`}>
+              <button
+                onClick={() => handleAlignAssets('right')}
+                disabled={selectedAssetIds.length < 2}
+                aria-label="Align Right"
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${
+                  selectedAssetIds.length < 2
+                    ? 'border-line bg-surface text-ink-soft/40 cursor-not-allowed'
+                    : 'border-line bg-surface hover:border-gold/50 hover:bg-gold/10 text-ink-soft hover:text-gold cursor-pointer'
+                }`}
+              >
+                <AlignHorizontalJustifyEnd size={14} />
+              </button>
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                {selectedAssetIds.length >= 2 ? `Align ${selectedAssetIds.length} selected to their right edge` : 'Select 2+ assets to align right'}
               </span>
             </div>
 

@@ -7,7 +7,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { Project, Yard, Asset, BinAsset, MarkerAsset, ZoneAsset, BinSpecModel, WireConnection, generateAssetId } from '../types';
 import { getCableRecommendation } from '../utils/cableRecommendation';
 import { BIN_DATABASE } from '../data/binDatabase';
-import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search, Lock, Unlock, MousePointer2, Hand, MoveHorizontal, MoveVertical, Grid3x3, Magnet, Zap } from 'lucide-react';
+import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search, Lock, Unlock, MousePointer2, Hand, MoveHorizontal, MoveVertical, Grid3x3, Magnet, Zap, Undo2 } from 'lucide-react';
 
 interface SitePlannerViewProps {
   project: Project;
@@ -16,6 +16,8 @@ interface SitePlannerViewProps {
   onSelectBinInEstimator: (binId: number) => void;
   selectedAssetId: number | null;
   onSelectAsset: (assetId: number | null) => void;
+  onUndo: () => void;
+  canUndo: boolean;
 }
 
 const GRID_SIZE = 5;
@@ -97,6 +99,8 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   onSelectBinInEstimator,
   selectedAssetId,
   onSelectAsset,
+  onUndo,
+  canUndo,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -2681,6 +2685,26 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
 
           {/* Center: tool icons, each with a hover tooltip */}
           <div className="flex items-center gap-1 flex-wrap justify-center">
+            <div className="relative group">
+              <button
+                onClick={onUndo}
+                disabled={!canUndo}
+                aria-label="Undo"
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${
+                  canUndo
+                    ? 'border-line bg-surface hover:border-gold/50 hover:bg-gold/5 text-ink-soft cursor-pointer'
+                    : 'border-line bg-surface text-ink-soft/40 cursor-not-allowed'
+                }`}
+              >
+                <Undo2 size={14} />
+              </button>
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                {canUndo ? 'Undo (Cmd/Ctrl+Z)' : 'Nothing to undo'}
+              </span>
+            </div>
+
+            <div className="w-px h-5 bg-line mx-1" />
+
             <div className="relative group">
               <button
                 onClick={() => setEditMode((prev) => !prev)}

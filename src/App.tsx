@@ -1413,6 +1413,8 @@ export default function App() {
             onSelectBinInEstimator={handleSelectBinInEstimator}
             selectedAssetId={selectedAssetId}
             onSelectAsset={setSelectedAssetId}
+            onUndo={handleUndo}
+            canUndo={history.length > 0}
           />
         )}
 

@@ -7,7 +7,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { Project, Yard, Asset, BinAsset, MarkerAsset, ZoneAsset, BinSpecModel, WireConnection, generateAssetId } from '../types';
 import { getCableRecommendation } from '../utils/cableRecommendation';
 import { BIN_DATABASE } from '../data/binDatabase';
-import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search, Lock, Unlock, MousePointer2, Hand, MoveHorizontal, MoveVertical, Grid3x3, Magnet, Zap, Undo2, AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignVerticalJustifyEnd } from 'lucide-react';
+import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search, Lock, Unlock, MousePointer2, Hand, MoveHorizontal, MoveVertical, Grid3x3, Magnet, Zap, Undo2, Redo2, AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignVerticalJustifyStart, AlignVerticalJustifyEnd } from 'lucide-react';
 
 interface SitePlannerViewProps {
   project: Project;
@@ -18,6 +18,8 @@ interface SitePlannerViewProps {
   onSelectAsset: (assetId: number | null) => void;
   onUndo: () => void;
   canUndo: boolean;
+  onRedo: () => void;
+  canRedo: boolean;
 }
 
 const GRID_SIZE = 5;
@@ -101,6 +103,8 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   onSelectAsset,
   onUndo,
   canUndo,
+  onRedo,
+  canRedo,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1233,7 +1237,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   );
 
   const handleAlignAssets = useCallback(
-    (mode: 'left' | 'center' | 'right' | 'bottom') => {
+    (mode: 'left' | 'center' | 'right' | 'top' | 'bottom') => {
       if (!activeYard || !editMode || selectedAssetIds.length < 2) return;
 
       const targets = activeYard.bins.filter((b) => selectedAssetIds.includes(b.id));
@@ -1256,11 +1260,14 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
         return getHalfWidth(b);
       };
 
-      if (mode === 'bottom') {
-        const referenceY = Math.max(...targets.map((b) => b.y + getHalfHeight(b)));
+      if (mode === 'top' || mode === 'bottom') {
+        const referenceY =
+          mode === 'top'
+            ? Math.min(...targets.map((b) => b.y - getHalfHeight(b)))
+            : Math.max(...targets.map((b) => b.y + getHalfHeight(b)));
         const updatedMap = new Map<number, number>();
         targets.forEach((b) => {
-          let newY = referenceY - getHalfHeight(b);
+          let newY = mode === 'top' ? referenceY + getHalfHeight(b) : referenceY - getHalfHeight(b);
           if (snapToGrid) newY = Math.round(newY / GRID_SIZE) * GRID_SIZE;
           updatedMap.set(b.id, newY);
         });
@@ -2781,6 +2788,23 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                 {canUndo ? 'Undo (Cmd/Ctrl+Z)' : 'Nothing to undo'}
               </span>
             </div>
+            <div className="relative group">
+              <button
+                onClick={onRedo}
+                disabled={!canRedo}
+                aria-label="Redo"
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${
+                  canRedo
+                    ? 'border-line bg-surface hover:border-gold/50 hover:bg-gold/5 text-ink-soft cursor-pointer'
+                    : 'border-line bg-surface text-ink-soft/40 cursor-not-allowed'
+                }`}
+              >
+                <Redo2 size={14} />
+              </button>
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                {canRedo ? 'Redo (Cmd/Ctrl+Shift+Z)' : 'Nothing to redo'}
+              </span>
+            </div>
 
             <div className="w-px h-5 bg-line mx-1" />
 
@@ -2887,6 +2911,23 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
               </button>
               <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
                 {selectedAssetIds.length >= 2 ? `Align ${selectedAssetIds.length} selected to their right edge` : 'Select 2+ assets to align right'}
+              </span>
+            </div>
+            <div className={`relative group ${editLockedClass}`}>
+              <button
+                onClick={() => handleAlignAssets('top')}
+                disabled={selectedAssetIds.length < 2}
+                aria-label="Align Top"
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${
+                  selectedAssetIds.length < 2
+                    ? 'border-line bg-surface text-ink-soft/40 cursor-not-allowed'
+                    : 'border-line bg-surface hover:border-gold/50 hover:bg-gold/10 text-ink-soft hover:text-gold cursor-pointer'
+                }`}
+              >
+                <AlignVerticalJustifyStart size={14} />
+              </button>
+              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-30 shadow-lg">
+                {selectedAssetIds.length >= 2 ? `Align ${selectedAssetIds.length} selected to their top edge` : 'Select 2+ assets to align top'}
               </span>
             </div>
             <div className={`relative group ${editLockedClass}`}>

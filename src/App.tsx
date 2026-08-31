@@ -174,8 +174,26 @@ export default function App() {
     setTimeout(() => setCopiedCustomerField((prev) => (prev === fieldKey ? null : prev)), 2000);
   };
 
-  // Undo history stack state
+  // Undo/Redo history stacks
   const [history, setHistory] = useState<Project[]>([]);
+  const [redoStack, setRedoStack] = useState<Project[]>([]);
+
+  // handleUndo/handleRedo are referenced by a keydown listener registered
+  // once (see the effect below), so they must always act on the truly
+  // current history/redoStack/project rather than whatever was captured
+  // when that listener was first attached. historyRef/redoStackRef mirror
+  // that same pattern already used for `projectRef` (declared further down)
+  // — kept fresh both passively (via effects, for changes made elsewhere)
+  // and synchronously inside the handlers themselves, so back-to-back
+  // undo/redo presses faster than a render can flush still see correct data.
+  const historyRef = useRef<Project[]>(history);
+  const redoStackRef = useRef<Project[]>(redoStack);
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
+  useEffect(() => {
+    redoStackRef.current = redoStack;
+  }, [redoStack]);
 
   // A continuous gesture (dragging an asset, holding a key down, typing in a
   // text field) fires many rapid updates in a row. Pushing a history entry
@@ -186,10 +204,16 @@ export default function App() {
   const lastHistoryPushRef = useRef<number>(0);
 
   const updateProjectWithHistory = (updater: Project | ((prev: Project) => Project)) => {
+    // React (in StrictMode/dev) invokes a setState updater function twice to
+    // surface impure updaters, discarding the first result. Since prev/next
+    // are identical across both invocations, this guard makes sure the
+    // nested setHistory/setRedoStack calls below still fire exactly once.
+    let effectsRan = false;
     setProject((prev) => {
       let next = typeof updater === 'function' ? updater(prev) : updater;
       next = syncProjectCables(next, prev);
-      if (JSON.stringify(prev) !== JSON.stringify(next)) {
+      if (!effectsRan && JSON.stringify(prev) !== JSON.stringify(next)) {
+        effectsRan = true;
         const now = Date.now();
         const shouldCoalesce = now - lastHistoryPushRef.current < COALESCE_WINDOW_MS;
         lastHistoryPushRef.current = now;
@@ -202,21 +226,49 @@ export default function App() {
             return updated;
           });
         }
+        // A genuine new edit invalidates whatever was available to redo.
+        setRedoStack([]);
       }
       return next;
     });
   };
 
   const handleUndo = () => {
-    setHistory((prevHistory) => {
-      if (prevHistory.length === 0) return prevHistory;
-      const copy = [...prevHistory];
-      const previousState = copy.pop();
-      if (previousState) {
-        setProject(previousState);
-      }
-      return copy;
-    });
+    const currentHistory = historyRef.current;
+    if (currentHistory.length === 0) return;
+    const previousState = currentHistory[currentHistory.length - 1];
+    const newHistory = currentHistory.slice(0, -1);
+    const newRedo = [...redoStackRef.current, projectRef.current];
+    if (newRedo.length > 50) {
+      newRedo.shift();
+    }
+
+    historyRef.current = newHistory;
+    redoStackRef.current = newRedo;
+    projectRef.current = previousState;
+
+    setHistory(newHistory);
+    setRedoStack(newRedo);
+    setProject(previousState);
+  };
+
+  const handleRedo = () => {
+    const currentRedo = redoStackRef.current;
+    if (currentRedo.length === 0) return;
+    const nextState = currentRedo[currentRedo.length - 1];
+    const newRedo = currentRedo.slice(0, -1);
+    const newHistory = [...historyRef.current, projectRef.current];
+    if (newHistory.length > 50) {
+      newHistory.shift();
+    }
+
+    redoStackRef.current = newRedo;
+    historyRef.current = newHistory;
+    projectRef.current = nextState;
+
+    setRedoStack(newRedo);
+    setHistory(newHistory);
+    setProject(nextState);
   };
 
   useEffect(() => {
@@ -230,9 +282,13 @@ export default function App() {
         return;
       }
 
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
-        handleUndo();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
       }
     };
 
@@ -1415,6 +1471,8 @@ export default function App() {
             onSelectAsset={setSelectedAssetId}
             onUndo={handleUndo}
             canUndo={history.length > 0}
+            onRedo={handleRedo}
+            canRedo={redoStack.length > 0}
           />
         )}
 

@@ -4,6 +4,7 @@
  */
 
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Project, Yard, Asset, BinAsset, generateProjectId, generateAssetId } from '../types';
 import { getCableRecommendation } from '../utils/cableRecommendation';
 import { computeBinCapacityBushels } from '../utils/binCapacity';
@@ -57,6 +58,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Yard details editing (name/location/notes) and hover preview
   const [editingYardId, setEditingYardId] = useState<number | null>(null);
   const [hoveredYardId, setHoveredYardId] = useState<number | null>(null);
+  // Bounding rect of the hovered yard card, captured on hover start, so the
+  // preview popup can be portaled to <body> and positioned in the viewport
+  // instead of the yards-list's scroll container - otherwise a popup for a
+  // card near the bottom of that scrollable list gets clipped.
+  const [hoveredYardRect, setHoveredYardRect] = useState<DOMRect | null>(null);
   const [copiedYardField, setCopiedYardField] = useState<string | null>(null);
 
   // Local draft buffer for Project Notes: committing to global project
@@ -1004,7 +1010,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div
                   key={yard.id}
                   className="relative"
-                  onMouseEnter={() => !isReorderingYards && setHoveredYardId(yard.id)}
+                  onMouseEnter={(e) => {
+                    if (isReorderingYards) return;
+                    setHoveredYardId(yard.id);
+                    setHoveredYardRect(e.currentTarget.getBoundingClientRect());
+                  }}
                   onMouseLeave={() => setHoveredYardId((prev) => (prev === yard.id ? null : prev))}
                 >
                   <div
@@ -1082,40 +1092,64 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </p>
                   </div>
 
-                  {/* Hover preview: name, location (with copy), notes */}
-                  {hoveredYardId === yard.id && !isReorderingYards && editingYardId !== yard.id && (
-                    <div className="absolute z-30 left-0 right-0 top-full mt-1.5 bg-surface border border-line rounded-xl shadow-xl p-3 pointer-events-auto">
-                      <div className="font-black text-xs uppercase tracking-wider text-ink mb-2">{yard.name}</div>
-                      <div className="flex items-center gap-1.5 text-xs text-ink-soft mb-2">
-                        <MapPin size={11} className="shrink-0 text-gold" />
-                        <span className="flex-1 truncate">
-                          {yard.location || <span className="italic">No location set</span>}
-                        </span>
-                        {yard.location && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCopyYardLocation(yard.id, yard.location || '');
-                            }}
-                            className="p-0.5 text-ink-soft hover:text-gold transition-colors shrink-0 cursor-pointer"
-                            title="Copy Location"
-                            aria-label="Copy Location"
-                          >
-                            {copiedYardField === `${yard.id}-location` ? (
-                              <Check size={11} className="text-emerald-400" />
-                            ) : (
-                              <Copy size={11} />
+                  {/* Hover preview: name, location (with copy), notes. Portaled to
+                      <body> and positioned from the card's viewport rect so it can
+                      flip above the card (instead of getting clipped by the
+                      yards-list scroll container) when there isn't room below. */}
+                  {hoveredYardId === yard.id && !isReorderingYards && editingYardId !== yard.id && hoveredYardRect && createPortal(
+                    (() => {
+                      const margin = 8;
+                      const spaceBelow = window.innerHeight - hoveredYardRect.bottom;
+                      const spaceAbove = hoveredYardRect.top;
+                      const openUpward = spaceBelow < 180 && spaceAbove > spaceBelow;
+                      const left = Math.min(
+                        Math.max(hoveredYardRect.left, margin),
+                        window.innerWidth - hoveredYardRect.width - margin
+                      );
+                      return (
+                        <div
+                          className="fixed z-50 bg-surface border border-line rounded-xl shadow-xl p-3 pointer-events-auto"
+                          style={{
+                            left,
+                            width: hoveredYardRect.width,
+                            top: openUpward ? hoveredYardRect.top - margin : hoveredYardRect.bottom + margin,
+                            transform: openUpward ? 'translateY(-100%)' : undefined,
+                          }}
+                        >
+                          <div className="font-black text-xs uppercase tracking-wider text-ink mb-2">{yard.name}</div>
+                          <div className="flex items-center gap-1.5 text-xs text-ink-soft mb-2">
+                            <MapPin size={11} className="shrink-0 text-gold" />
+                            <span className="flex-1 truncate">
+                              {yard.location || <span className="italic">No location set</span>}
+                            </span>
+                            {yard.location && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopyYardLocation(yard.id, yard.location || '');
+                                }}
+                                className="p-0.5 text-ink-soft hover:text-gold transition-colors shrink-0 cursor-pointer"
+                                title="Copy Location"
+                                aria-label="Copy Location"
+                              >
+                                {copiedYardField === `${yard.id}-location` ? (
+                                  <Check size={11} className="text-emerald-400" />
+                                ) : (
+                                  <Copy size={11} />
+                                )}
+                              </button>
                             )}
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex items-start gap-1.5 text-[11px] text-ink-soft leading-snug">
-                        <FileText size={11} className="shrink-0 text-ink-soft mt-0.5" />
-                        <span className="whitespace-pre-wrap break-words">
-                          {yard.notes || <span className="italic">No notes</span>}
-                        </span>
-                      </div>
-                    </div>
+                          </div>
+                          <div className="flex items-start gap-1.5 text-[11px] text-ink-soft leading-snug">
+                            <FileText size={11} className="shrink-0 text-ink-soft mt-0.5" />
+                            <span className="whitespace-pre-wrap break-words">
+                              {yard.notes || <span className="italic">No notes</span>}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })(),
+                    document.body
                   )}
                 </div>
               );

@@ -27,6 +27,18 @@ const VISUAL_GRID_MAJOR = 50;
 const BASE_SCALE = 3.0;
 const BIN_SIZES = [18, 24, 30, 36, 42, 48, 50];
 
+// Edit Mode stays unlocked for this long once turned on, persisted across
+// switching to another tab (e.g. Cable Lengths) and back - the component
+// remounts on every tab switch, so without this the local unlock would
+// reset to locked each time.
+const EDIT_UNLOCK_STORAGE_KEY = 'grainlink_edit_unlock_until';
+const EDIT_UNLOCK_DURATION_MS = 60 * 60 * 1000;
+
+function readStoredEditUnlock(): boolean {
+  const storedUntil = Number(localStorage.getItem(EDIT_UNLOCK_STORAGE_KEY));
+  return Boolean(storedUntil) && storedUntil > Date.now();
+}
+
 function escapeRegExp(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -116,7 +128,35 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   // accident (a stray drag, an arrow-key nudge, a misclick on Delete).
   // Selecting an asset to inspect its properties and panning/zooming still
   // work in view-only mode; every mutating action is gated on this.
-  const [editMode, setEditMode] = useState<boolean>(false);
+  // Unlocking persists for EDIT_UNLOCK_DURATION_MS (see above) so switching
+  // to another tab and back doesn't re-lock it immediately.
+  const [editMode, setEditModeState] = useState<boolean>(readStoredEditUnlock);
+  const setEditMode = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
+    setEditModeState((prev) => {
+      const next = typeof value === 'function' ? (value as (p: boolean) => boolean)(prev) : value;
+      if (next) {
+        localStorage.setItem(EDIT_UNLOCK_STORAGE_KEY, String(Date.now() + EDIT_UNLOCK_DURATION_MS));
+      } else {
+        localStorage.removeItem(EDIT_UNLOCK_STORAGE_KEY);
+      }
+      return next;
+    });
+  }, []);
+  // Auto re-lock once the unlock window expires while this view stays mounted.
+  useEffect(() => {
+    if (!editMode) return;
+    const storedUntil = Number(localStorage.getItem(EDIT_UNLOCK_STORAGE_KEY));
+    const remaining = storedUntil - Date.now();
+    if (remaining <= 0) {
+      setEditModeState(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setEditModeState(false);
+      localStorage.removeItem(EDIT_UNLOCK_STORAGE_KEY);
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [editMode]);
   // Shared className for any UI region that mutates the layout — dimmed and
   // inert while Edit Mode is off.
   const editLockedClass = !editMode ? 'opacity-60 pointer-events-none select-none' : '';

@@ -8,6 +8,7 @@ import autoTable from 'jspdf-autotable';
 import { Project, BinAsset, Asset } from '../types';
 import { computeBinCapacityBushels } from './binCapacity';
 import { getCableRecommendation } from './cableRecommendation';
+import { getWireCurve } from './wireCurve';
 
 export interface PDFGeneratorCallbacks {
   setLoading: (loading: boolean) => void;
@@ -792,24 +793,27 @@ export async function generateUnifiedPDF(
           const toAsset = yard.bins.find((b) => b.id === wire.toId);
           if (!fromAsset || !toAsset) return;
 
+          // Compute the curve in world space first - same inputs, same
+          // formula the Site Planner canvas uses, so a wire the user
+          // manually bent (wire.bendX/bendY) curves through that exact
+          // point here too instead of falling back to the generic
+          // perpendicular-offset curve. Scale every point (endpoints and
+          // control point alike) into PDF space together afterward so the
+          // shape carries over unchanged.
+          const { ctrlX: worldCtrlX, ctrlY: worldCtrlY } = getWireCurve(
+            fromAsset.x,
+            fromAsset.y,
+            toAsset.x,
+            toAsset.y,
+            wire
+          );
+
           const p1x = fromAsset.x * pdfScale + offsetX;
           const p1y = fromAsset.y * pdfScale + offsetY;
           const p2x = toAsset.x * pdfScale + offsetX;
           const p2y = toAsset.y * pdfScale + offsetY;
-
-          // Calculate control point for curved wires to bypass overlapping bins/markers
-          const midX = (p1x + p2x) / 2;
-          const midY = (p1y + p2y) / 2;
-
-          const dx = p2x - p1x;
-          const dy = p2y - p1y;
-          const len = Math.sqrt(dx * dx + dy * dy);
-          const offset = Math.max(30 * pdfScale, len * 0.25);
-          const px = -dy / (len || 1);
-          const py = dx / (len || 1);
-
-          const ctrlX = midX + px * offset;
-          const ctrlY = midY + py * offset;
+          const ctrlX = worldCtrlX * pdfScale + offsetX;
+          const ctrlY = worldCtrlY * pdfScale + offsetY;
 
           doc.setLineWidth(1.0);
           if (wire.type === 'cat5') {

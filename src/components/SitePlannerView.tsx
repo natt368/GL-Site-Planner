@@ -58,12 +58,12 @@ function nextNumberedName(existingNames: string[], prefix: string): string {
   return `${prefix}${max + 1}`;
 }
 
-// A new bin defaults to its diameter (e.g. "GB36") rather than a plain
+// A new bin defaults to its bare diameter (e.g. "36") rather than a plain
 // sequential index, since diameter is what's actually useful to see at a
 // glance on a site layout with many bins. Falls back to a "-2", "-3", ...
 // suffix only if that exact diameter is already taken by another bin.
 function nextDiameterBinName(existingNames: string[], diameterFt: number): string {
-  const base = `GB${diameterFt}`;
+  const base = `${diameterFt}`;
   if (!existingNames.includes(base)) return base;
   let suffix = 2;
   while (existingNames.includes(`${base}-${suffix}`)) suffix++;
@@ -1125,18 +1125,17 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     const binsToDup = activeYard.bins.filter((b) => idsToDuplicate.includes(b.id));
     if (binsToDup.length === 0) return;
 
-    const existingGBNums = activeYard.bins
-      .filter((b) => b.type === 'bin')
-      .map((b) => {
-        const match = b.name.match(/^GB(\d+)$/);
-        return match ? parseInt(match[1], 10) : 0;
-      });
-    const maxGBNum = existingGBNums.length > 0 ? Math.max(...existingGBNums) : 0;
+    // Bins keep the diameter-based naming used when adding a new bin
+    // (nextDiameterBinName), tracking names assigned earlier in this same
+    // duplicate batch so duplicating several same-diameter bins at once
+    // doesn't hand out the same name twice.
+    const binNamesInUse = activeYard.bins.filter((b) => b.type === 'bin').map((b) => b.name);
 
     const newBins = binsToDup.map((b, index) => {
       let newName = '';
       if (b.type === 'bin') {
-        newName = `GB${maxGBNum + index + 1}`;
+        newName = nextDiameterBinName(binNamesInUse, parseFloat((b as BinAsset).diameter));
+        binNamesInUse.push(newName);
       } else if (b.type === 'chester-x' || b.type === 'chester-x1' || b.type === 'junction-box' || b.type === 'fan-control') {
         const type = b.type;
         const prefix = 

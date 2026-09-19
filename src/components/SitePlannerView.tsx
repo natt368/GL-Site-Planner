@@ -582,6 +582,33 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
           ctx.strokeStyle = isSelected ? '#B8842E' : '#D9B872';
           ctx.lineWidth = (isSelected ? 4 : 2) / view.scale;
           ctx.stroke();
+
+          // Small dots marking the recommended cable positions for this
+          // bin's diameter (same center/radius pattern shown in the
+          // Dashboard's Recommended Cable Arrangement guide), so the
+          // layout hints at cable count/placement at a glance.
+          const cableRec = getCableRecommendation((bin as BinAsset).diameter);
+          const dotRadius = Math.max(1.5 / view.scale, radius * 0.045);
+          ctx.fillStyle = isSelected ? '#F3E6D1' : '#D9B872';
+          if (cableRec.center > 0) {
+            ctx.beginPath();
+            ctx.arc(bin.x, bin.y, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          if (cableRec.radius > 0) {
+            const ringRadius = radius * 0.6;
+            // 3-cable pattern starts pointing up to match the Dashboard
+            // guide's icon; 4-cable pattern is simply evenly spaced.
+            const angleOffset = cableRec.radius === 3 ? -Math.PI / 2 : 0;
+            for (let i = 0; i < cableRec.radius; i++) {
+              const angle = angleOffset + (i * 2 * Math.PI) / cableRec.radius;
+              const px = bin.x + ringRadius * Math.cos(angle);
+              const py = bin.y + ringRadius * Math.sin(angle);
+              ctx.beginPath();
+              ctx.arc(px, py, dotRadius, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
         }
 
         if (bin.name && bin.type !== 'chester-x' && bin.type !== 'chester-x1' && bin.type !== 'junction-box' && bin.type !== 'fan-control') {

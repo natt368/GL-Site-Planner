@@ -58,6 +58,18 @@ function nextNumberedName(existingNames: string[], prefix: string): string {
   return `${prefix}${max + 1}`;
 }
 
+// A new bin defaults to its diameter (e.g. "GB36") rather than a plain
+// sequential index, since diameter is what's actually useful to see at a
+// glance on a site layout with many bins. Falls back to a "-2", "-3", ...
+// suffix only if that exact diameter is already taken by another bin.
+function nextDiameterBinName(existingNames: string[], diameterFt: number): string {
+  const base = `GB${diameterFt}`;
+  if (!existingNames.includes(base)) return base;
+  let suffix = 2;
+  while (existingNames.includes(`${base}-${suffix}`)) suffix++;
+  return `${base}-${suffix}`;
+}
+
 // Finds the closest real bin spec for a given diameter so quick-add presets
 // get plausible, diameter-appropriate eave/total heights and ring counts
 // instead of a single fixed size applied to every diameter.
@@ -918,9 +930,9 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     if (!activeYard || !editMode) return;
 
     const worldCenter = screenToWorld(dimensions.width / 2, dimensions.height / 2);
-    const binName = nextNumberedName(
+    const binName = nextDiameterBinName(
       activeYard.bins.filter((b) => b.type === 'bin').map((b) => b.name),
-      'GB'
+      model.diameterFt
     );
 
     let centerCable = '';
@@ -981,9 +993,9 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
     if (!activeYard || !editMode) return;
 
     const worldCenter = screenToWorld(dimensions.width / 2, dimensions.height / 2);
-    const binName = nextNumberedName(
+    const binName = nextDiameterBinName(
       activeYard.bins.filter((b) => b.type === 'bin').map((b) => b.name),
-      'GB'
+      diameter
     );
 
     // Base quick-add defaults on the closest real bin spec for this
@@ -1452,6 +1464,16 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
       }
     }
 
+    // Mass edit: changing a dimension field (diameter, eave height, ...)
+    // while multiple assets are selected applies to every selected asset
+    // that has that field, not just the last-clicked one - editing a batch
+    // of same-size GBs one at a time was the friction this removes. Name,
+    // notes, and model number stay single-asset only since those are
+    // inherently per-bin, not something you'd want forced identical.
+    const massEditableFields = ['diameter', 'eaveHeight', 'totalHeight', 'hopperConeHeight', 'width', 'height'];
+    const applyToAllSelected = massEditableFields.includes(key) && selectedAssetIds.length > 1;
+    const targetIds = applyToAllSelected ? selectedAssetIds : [selectedAssetId];
+
     onUpdateProject((prev) => ({
       ...prev,
       yards: prev.yards.map((y) =>
@@ -1459,7 +1481,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
           ? {
               ...y,
               bins: y.bins.map((b) => {
-                if (b.id !== selectedAssetId) return b;
+                if (!targetIds.includes(b.id) || !(key in b)) return b;
                 const updated = { ...b, [key]: safeValue };
                 if (key === 'eaveHeight' && b.type === 'bin') {
                   updated.rings = Math.round(parseFloat(safeValue) / 4).toString();
@@ -2435,7 +2457,14 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                 {selectedAsset.type === 'bin' && (
                   <>
                     <div className="bg-line/60 rounded-xl p-4 border border-line/30 space-y-3">
-                      <p className="text-[9px] font-black uppercase text-ink tracking-wider">Dimensions</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-[9px] font-black uppercase text-ink tracking-wider">Dimensions</p>
+                        {selectedAssetIds.length > 1 && (
+                          <span className="text-[9px] font-bold text-gold">
+                            Applies to all {selectedAssetIds.length} selected
+                          </span>
+                        )}
+                      </div>
                       <div>
                         <label className="text-[9px] uppercase font-bold text-ink-soft mb-1 block">Diameter (ft)</label>
                         <input

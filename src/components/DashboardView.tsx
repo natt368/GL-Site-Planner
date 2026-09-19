@@ -58,11 +58,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Yard details editing (name/location/notes) and hover preview
   const [editingYardId, setEditingYardId] = useState<number | null>(null);
   const [hoveredYardId, setHoveredYardId] = useState<number | null>(null);
-  // Bounding rect of the hovered yard card, captured on hover start, so the
-  // preview popup can be portaled to <body> and positioned in the viewport
-  // instead of the yards-list's scroll container - otherwise a popup for a
-  // card near the bottom of that scrollable list gets clipped.
+  // Bounding rect of the Yards Manager panel, captured on hover start, so the
+  // preview popup can be portaled to <body> and centered over that panel
+  // instead of being anchored to the hovered card inside its scrolling
+  // list - anchoring to the card meant a popup near the bottom of the list
+  // either got clipped or still opened downward off the panel.
   const [hoveredYardRect, setHoveredYardRect] = useState<DOMRect | null>(null);
+  const yardsManagerRef = useRef<HTMLDivElement>(null);
   const [copiedYardField, setCopiedYardField] = useState<string | null>(null);
 
   // Local draft buffer for Project Notes: committing to global project
@@ -963,7 +965,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Yards Manager */}
-        <div className="bg-surface rounded-2xl border border-line p-5 flex flex-col flex-grow overflow-hidden">
+        <div ref={yardsManagerRef} className="bg-surface rounded-2xl border border-line p-5 flex flex-col flex-grow overflow-hidden">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-ink">Yards Manager</h3>
             <div className="flex items-center gap-2">
@@ -1010,10 +1012,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div
                   key={yard.id}
                   className="relative"
-                  onMouseEnter={(e) => {
+                  onMouseEnter={() => {
                     if (isReorderingYards) return;
                     setHoveredYardId(yard.id);
-                    setHoveredYardRect(e.currentTarget.getBoundingClientRect());
+                    setHoveredYardRect(yardsManagerRef.current?.getBoundingClientRect() ?? null);
                   }}
                   onMouseLeave={() => setHoveredYardId((prev) => (prev === yard.id ? null : prev))}
                 >
@@ -1093,27 +1095,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
 
                   {/* Hover preview: name, location (with copy), notes. Portaled to
-                      <body> and positioned from the card's viewport rect so it can
-                      flip above the card (instead of getting clipped by the
-                      yards-list scroll container) when there isn't room below. */}
+                      <body> and centered over the Yards Manager panel (not anchored
+                      to the hovered card) so its position is constant regardless of
+                      scroll position or which row is hovered - it can never be
+                      clipped by the panel's own scrolling list. */}
                   {hoveredYardId === yard.id && !isReorderingYards && editingYardId !== yard.id && hoveredYardRect && createPortal(
                     (() => {
-                      const margin = 8;
-                      const spaceBelow = window.innerHeight - hoveredYardRect.bottom;
-                      const spaceAbove = hoveredYardRect.top;
-                      const openUpward = spaceBelow < 180 && spaceAbove > spaceBelow;
-                      const left = Math.min(
-                        Math.max(hoveredYardRect.left, margin),
-                        window.innerWidth - hoveredYardRect.width - margin
-                      );
+                      const width = Math.min(hoveredYardRect.width - 32, 320);
                       return (
                         <div
                           className="fixed z-50 bg-surface border border-line rounded-xl shadow-xl p-3 pointer-events-auto"
                           style={{
-                            left,
-                            width: hoveredYardRect.width,
-                            top: openUpward ? hoveredYardRect.top - margin : hoveredYardRect.bottom + margin,
-                            transform: openUpward ? 'translateY(-100%)' : undefined,
+                            left: hoveredYardRect.left + hoveredYardRect.width / 2,
+                            top: hoveredYardRect.top + hoveredYardRect.height / 2,
+                            width,
+                            transform: 'translate(-50%, -50%)',
                           }}
                         >
                           <div className="font-black text-xs uppercase tracking-wider text-ink mb-2">{yard.name}</div>

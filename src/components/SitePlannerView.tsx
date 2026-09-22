@@ -7,7 +7,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { Project, Yard, Asset, BinAsset, MarkerAsset, ZoneAsset, BinSpecModel, WireConnection, generateAssetId } from '../types';
 import { getCableRecommendation } from '../utils/cableRecommendation';
 import { BIN_DATABASE } from '../data/binDatabase';
-import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search, Lock, Unlock, MousePointer2, Hand, MoveHorizontal, MoveVertical, Grid3x3, Magnet, Zap, Undo2, Redo2, AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignVerticalJustifyStart, AlignVerticalJustifyEnd } from 'lucide-react';
+import { Trash2, Copy, Compass, Plus, Settings, RefreshCw, ZoomIn, Info, MapPin, Search, Lock, Unlock, MousePointer2, Hand, MoveHorizontal, MoveVertical, Grid3x3, Magnet, Zap, Undo2, Redo2, AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignVerticalJustifyStart, AlignVerticalJustifyEnd, ChevronDown } from 'lucide-react';
 
 interface SitePlannerViewProps {
   project: Project;
@@ -203,6 +203,16 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
   // Multi-selection states
   const [selectionMode, setSelectionMode] = useState<'select' | 'pan'>('pan');
   const [selectedAssetIds, setSelectedAssetIds] = useState<number[]>([]);
+
+  // "Add to Yard" (Markers & Zones / Add Bin Unit) collapses automatically
+  // whenever something gets selected, so the sidebar leads with that
+  // asset's properties instead of burying them below a wall of add-new
+  // controls. Left as a manual toggle rather than fully derived state so a
+  // person can still reopen it while something stays selected.
+  const [isAddPanelExpanded, setIsAddPanelExpanded] = useState(true);
+  useEffect(() => {
+    setIsAddPanelExpanded(selectedAssetId === null);
+  }, [selectedAssetId]);
   const [selectionBox, setSelectionBox] = useState<{
     startX: number;
     startY: number;
@@ -582,6 +592,33 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
           ctx.strokeStyle = isSelected ? '#B8842E' : '#D9B872';
           ctx.lineWidth = (isSelected ? 4 : 2) / view.scale;
           ctx.stroke();
+
+          // Small dots marking the recommended cable positions for this
+          // bin's diameter (same center/radius pattern shown in the
+          // Dashboard's Recommended Cable Arrangement guide), so the
+          // layout hints at cable count/placement at a glance.
+          const cableRec = getCableRecommendation((bin as BinAsset).diameter);
+          const dotRadius = Math.max(1.5 / view.scale, radius * 0.045);
+          ctx.fillStyle = isSelected ? '#F3E6D1' : '#D9B872';
+          if (cableRec.center > 0) {
+            ctx.beginPath();
+            ctx.arc(bin.x, bin.y, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          if (cableRec.radius > 0) {
+            const ringRadius = radius * 0.6;
+            // 3-cable pattern starts pointing up to match the Dashboard
+            // guide's icon; 4-cable pattern is simply evenly spaced.
+            const angleOffset = cableRec.radius === 3 ? -Math.PI / 2 : 0;
+            for (let i = 0; i < cableRec.radius; i++) {
+              const angle = angleOffset + (i * 2 * Math.PI) / cableRec.radius;
+              const px = bin.x + ringRadius * Math.cos(angle);
+              const py = bin.y + ringRadius * Math.sin(angle);
+              ctx.beginPath();
+              ctx.arc(px, py, dotRadius, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
         }
 
         if (bin.name && bin.type !== 'chester-x' && bin.type !== 'chester-x1' && bin.type !== 'junction-box' && bin.type !== 'fan-control') {
@@ -2114,6 +2151,23 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
             </div>
           )}
 
+          {/* Add to Yard: collapses once something is selected so the
+              properties panel below doesn't sit under a wall of add-new
+              controls. */}
+          <button
+            type="button"
+            onClick={() => setIsAddPanelExpanded((prev) => !prev)}
+            className="w-full flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-ink-soft cursor-pointer hover:text-ink transition-colors"
+          >
+            <span>Add to Yard</span>
+            <ChevronDown
+              size={13}
+              className={`transition-transform ${isAddPanelExpanded ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {isAddPanelExpanded && (
+            <div className="space-y-4">
           {/* Markers and Zones */}
           <section>
             <h2 className="text-[10px] font-bold uppercase tracking-widest text-ink-soft mb-2 flex items-center gap-2">
@@ -2306,6 +2360,8 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
             </div>
             </div>
           </section>
+            </div>
+          )}
 
           {/* Properties Panel */}
           {!editMode && selectedAsset && (
@@ -2502,14 +2558,9 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                         />
                       </div>
                       <div className="pt-3 border-t border-line/70 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] uppercase font-bold text-ink-soft tracking-wider">
-                            Bin Bottom Style
-                          </label>
-                          <span className="text-[9px] font-extrabold text-gold-dark bg-gold-light px-2 py-0.5 rounded-full border border-gold/60">
-                            {(selectedAsset as BinAsset).isHopper ? 'Hopper Bottom' : 'Flat Bottom'}
-                          </span>
-                        </div>
+                        <label className="text-[10px] uppercase font-bold text-ink-soft tracking-wider">
+                          Bottom Style
+                        </label>
                         <div className="grid grid-cols-2 gap-1 p-1 bg-paper/90 border border-line/80 rounded-xl shadow-inner">
                           <button
                             type="button"

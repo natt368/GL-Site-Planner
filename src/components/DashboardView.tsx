@@ -248,6 +248,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
+  // Duplicates the active project in place: same yards/bins/customer info,
+  // but a fresh Project ID (and no driveFileId) so a later "Backup to
+  // Drive" creates a new file instead of overwriting the original's.
+  const handleDuplicateProject = async () => {
+    const confirmed = await confirm(
+      `Duplicate "${project.name}" as a new project with its own Project ID? Your current workspace will switch to the duplicate.`,
+      { title: 'Duplicate Project', confirmLabel: 'Duplicate' }
+    );
+    if (!confirmed) return;
+
+    const duplicated: Project = {
+      ...JSON.parse(JSON.stringify(project)),
+      id: generateProjectId(),
+      name: `${project.name} (Copy)`,
+      driveFileId: undefined,
+    };
+    onUpdateProject(() => duplicated);
+    toast(`Duplicated as new project ${duplicated.id}.`, 'success');
+  };
+
   // Compute stats. Memoized because this scans every bin in every yard, and
   // otherwise re-runs on every render (e.g. every keystroke in the Notes
   // textarea below) rather than only when the project's bins actually change.
@@ -905,6 +925,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   Import from JSON file
                 </span>
               </div>
+
+              {/* 4. Duplicate as a new project (new Project ID) */}
+              <div className="relative group">
+                <button
+                  onClick={handleDuplicateProject}
+                  aria-label="Duplicate Project"
+                  className="w-9 h-9 rounded-xl bg-surface hover:bg-surface text-ink border border-line flex items-center justify-center transition-all cursor-pointer"
+                >
+                  <Copy size={14} className="text-gold" />
+                </button>
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-ink text-paper text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap z-20 shadow-lg">
+                  Duplicate as new project
+                </span>
+              </div>
               <input
                 type="file"
                 ref={fileInputRef}
@@ -914,7 +948,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               />
             </div>
 
-            {/* 4. Disconnect (only when connected) */}
+            {/* 5. Disconnect (only when connected) */}
             {accessToken && (
               <div className="relative group">
                 <button

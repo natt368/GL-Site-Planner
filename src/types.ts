@@ -64,6 +64,13 @@ export interface BinAsset extends BaseAsset {
   manufacturer?: string;
   modelNumber?: string;
   capacityBushels?: number;
+  // Whether this bin has monitoring cables at all. Undefined is treated as
+  // true (has cables) so existing projects created before this field
+  // existed keep behaving exactly as they did. Set per-bin from the
+  // Properties Panel, seeded from the yard's defaultHasCables when the bin
+  // is created - once set on a bin directly, it's sticky and isn't
+  // overwritten by later changes to the yard's default.
+  hasCables?: boolean;
 }
 
 export interface MarkerAsset extends BaseAsset {
@@ -95,6 +102,10 @@ export interface Yard {
   notes?: string;
   bins: Asset[];
   wires?: WireConnection[];
+  // Default cables-installed state new bins in this yard are created with.
+  // Undefined is treated as true. Purely a default for new bins - changing
+  // it does not retroactively touch existing bins' own hasCables value.
+  defaultHasCables?: boolean;
 }
 
 export interface Customer {

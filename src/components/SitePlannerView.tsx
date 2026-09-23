@@ -596,8 +596,11 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
           // Small dots marking the recommended cable positions for this
           // bin's diameter (same center/radius pattern shown in the
           // Dashboard's Recommended Cable Arrangement guide), so the
-          // layout hints at cable count/placement at a glance.
-          const cableRec = getCableRecommendation((bin as BinAsset).diameter);
+          // layout hints at cable count/placement at a glance. Skipped
+          // entirely for a bin marked as having no cables.
+          const cableRec = (bin as BinAsset).hasCables === false
+            ? { center: 0, radius: 0 }
+            : getCableRecommendation((bin as BinAsset).diameter);
           const dotRadius = Math.max(1.5 / view.scale, radius * 0.045);
           ctx.fillStyle = isSelected ? '#F3E6D1' : '#D9B872';
           if (cableRec.center > 0) {
@@ -1008,6 +1011,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
       isHopper: model.isHopper,
       hopperConeHeight: model.hopperConeHeightFt ? model.hopperConeHeightFt.toString() : model.isHopper ? '8' : '',
       capacityBushels: model.capacityBushels,
+      hasCables: activeYard.defaultHasCables !== false,
       centerCable,
       radiusCable,
       notes: '',
@@ -1053,6 +1057,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
       totalHeight: totalHeight.toString(),
       floorThick: '1.5',
       isHopper: false,
+      hasCables: activeYard.defaultHasCables !== false,
       notes: '',
       measurements: [],
       x: snapToGrid ? Math.round(worldCenter.x / GRID_SIZE) * GRID_SIZE : worldCenter.x,
@@ -1518,7 +1523,14 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
           ? {
               ...y,
               bins: y.bins.map((b) => {
-                if (!targetIds.includes(b.id) || !(key in b)) return b;
+                if (!targetIds.includes(b.id)) return b;
+                // Only guard against cross-type bleed during an actual mass
+                // edit (e.g. 'width' landing on a bin via a mixed
+                // bin+zone selection). For a single-asset edit, always
+                // apply it - the field being previously unset on that one
+                // asset (an older saved bin predating this field, e.g.)
+                // must not silently block setting it now.
+                if (applyToAllSelected && !(key in b)) return b;
                 const updated = { ...b, [key]: safeValue };
                 if (key === 'eaveHeight' && b.type === 'bin') {
                   updated.rings = Math.round(parseFloat(safeValue) / 4).toString();
@@ -2606,32 +2618,64 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                       </div>
 
                       <div className="pt-3 border-t border-line/70 space-y-2">
-                        <p className="text-[9px] font-black uppercase text-ink tracking-wider">Cable Lengths</p>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-ink-soft font-medium">Center Cable:</span>
-                          <span id="prop-center-cable" className="text-xs font-black text-gold-dark">
-                            {(selectedAsset as BinAsset).centerCable
-                               ? (selectedAsset as BinAsset).centerCable + "'"
-                              : '—'}
-                          </span>
+                        <div className="flex items-center justify-between">
+                          <p className="text-[9px] font-black uppercase text-ink tracking-wider">Cable Lengths</p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleUpdateAssetProperty('hasCables', !((selectedAsset as BinAsset).hasCables !== false))
+                            }
+                            aria-pressed={(selectedAsset as BinAsset).hasCables !== false}
+                            aria-label="Toggle whether this bin has cables"
+                            title={
+                              (selectedAsset as BinAsset).hasCables !== false
+                                ? 'Has cables - click to mark as no cables'
+                                : 'No cables - click to mark as having cables'
+                            }
+                            className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${
+                              (selectedAsset as BinAsset).hasCables !== false ? 'bg-gold' : 'bg-line'
+                            }`}
+                          >
+                            <span
+                              className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                                (selectedAsset as BinAsset).hasCables !== false ? 'translate-x-4' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-ink-soft font-medium">Radius Cable:</span>
-                          <span id="prop-radius-cable" className="text-xs font-black text-gold-dark">
-                            {(selectedAsset as BinAsset).radiusCable
-                              ? (selectedAsset as BinAsset).radiusCable + "'"
-                              : '—'}
-                          </span>
-                        </div>
+                        {(selectedAsset as BinAsset).hasCables === false ? (
+                          <p className="text-[10px] text-ink-soft italic">No cables on this bin.</p>
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[10px] text-ink-soft font-medium">Center Cable:</span>
+                              <span id="prop-center-cable" className="text-xs font-black text-gold-dark">
+                                {(selectedAsset as BinAsset).centerCable
+                                   ? (selectedAsset as BinAsset).centerCable + "'"
+                                  : '—'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[10px] text-ink-soft font-medium">Radius Cable:</span>
+                              <span id="prop-radius-cable" className="text-xs font-black text-gold-dark">
+                                {(selectedAsset as BinAsset).radiusCable
+                                  ? (selectedAsset as BinAsset).radiusCable + "'"
+                                  : '—'}
+                              </span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => onSelectBinInEstimator(selectedAsset.id)}
-                      className="w-full py-2.5 bg-gold hover:bg-gold text-ink rounded-xl font-black text-[9px] uppercase flex items-center justify-center gap-1 transition-all shadow-lg shadow-gold/15 cursor-pointer"
-                    >
-                      Design Cables
-                    </button>
+                    {(selectedAsset as BinAsset).hasCables !== false && (
+                      <button
+                        onClick={() => onSelectBinInEstimator(selectedAsset.id)}
+                        className="w-full py-2.5 bg-gold hover:bg-gold text-ink rounded-xl font-black text-[9px] uppercase flex items-center justify-center gap-1 transition-all shadow-lg shadow-gold/15 cursor-pointer"
+                      >
+                        Design Cables
+                      </button>
+                    )}
                   </>
                 )}
 

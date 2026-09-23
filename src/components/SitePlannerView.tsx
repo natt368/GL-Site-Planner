@@ -1052,6 +1052,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
       eaveHeight: eaveHeight.toString(),
       totalHeight: totalHeight.toString(),
       floorThick: '1.5',
+      isHopper: false,
       notes: '',
       measurements: [],
       x: snapToGrid ? Math.round(worldCenter.x / GRID_SIZE) * GRID_SIZE : worldCenter.x,
@@ -2396,11 +2397,11 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                 </div>
 
                 {selectedAsset.type === 'bin' && (
-                  <div className="bg-gold/10 rounded-xl p-3 border border-gold/30 space-y-2 relative">
+                  <div className="bg-line/60 rounded-xl p-4 border border-line/30 space-y-2 relative">
                     <div className="flex items-center justify-between">
-                      <label className="text-[9px] uppercase font-black text-gold-dark block tracking-wider">
+                      <p className="text-[9px] font-black uppercase text-ink tracking-wider">
                         Model Number / Spec
-                      </label>
+                      </p>
                       {(selectedAsset as BinAsset).manufacturer && (
                         <span className="text-[9px] font-bold text-gold-dark bg-gold-light px-2 py-0.5 rounded-full border border-gold">
                           {(selectedAsset as BinAsset).manufacturer}
@@ -2603,25 +2604,25 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                           </div>
                         )}
                       </div>
-                    </div>
 
-                     <div className="bg-gold/10 rounded-xl p-3 border border-gold/20 space-y-2">
-                      <p className="text-[9px] font-black uppercase text-gold-dark tracking-wider">Cable Lengths</p>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] text-ink font-medium">Center Cable:</span>
-                        <span id="prop-center-cable" className="text-xs font-black text-gold-dark">
-                          {(selectedAsset as BinAsset).centerCable
-                             ? (selectedAsset as BinAsset).centerCable + "'"
-                            : '—'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] text-ink font-medium">Radius Cable:</span>
-                        <span id="prop-radius-cable" className="text-xs font-black text-gold-dark">
-                          {(selectedAsset as BinAsset).radiusCable
-                            ? (selectedAsset as BinAsset).radiusCable + "'"
-                            : '—'}
-                        </span>
+                      <div className="pt-3 border-t border-line/70 space-y-2">
+                        <p className="text-[9px] font-black uppercase text-ink tracking-wider">Cable Lengths</p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-ink-soft font-medium">Center Cable:</span>
+                          <span id="prop-center-cable" className="text-xs font-black text-gold-dark">
+                            {(selectedAsset as BinAsset).centerCable
+                               ? (selectedAsset as BinAsset).centerCable + "'"
+                              : '—'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-ink-soft font-medium">Radius Cable:</span>
+                          <span id="prop-radius-cable" className="text-xs font-black text-gold-dark">
+                            {(selectedAsset as BinAsset).radiusCable
+                              ? (selectedAsset as BinAsset).radiusCable + "'"
+                              : '—'}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -2629,7 +2630,7 @@ export const SitePlannerView: React.FC<SitePlannerViewProps> = ({
                       onClick={() => onSelectBinInEstimator(selectedAsset.id)}
                       className="w-full py-2.5 bg-gold hover:bg-gold text-ink rounded-xl font-black text-[9px] uppercase flex items-center justify-center gap-1 transition-all shadow-lg shadow-gold/15 cursor-pointer"
                     >
-                      Design Cables (Double-click Bin)
+                      Design Cables
                     </button>
                   </>
                 )}

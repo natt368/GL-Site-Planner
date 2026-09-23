@@ -40,7 +40,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSaveComplete,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { confirm, promptText, toast } = useDialogs();
+  const { confirm, toast } = useDialogs();
 
   const [user, setUser] = useState<any>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -58,6 +58,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Yard details editing (name/location/notes) and hover preview
   const [editingYardId, setEditingYardId] = useState<number | null>(null);
   const [hoveredYardId, setHoveredYardId] = useState<number | null>(null);
+  // New Yard creation modal (name + default cables-installed state for bins
+  // added to it)
+  const [isCreatingYard, setIsCreatingYard] = useState(false);
+  const [newYardName, setNewYardName] = useState('');
+  const [newYardDefaultHasCables, setNewYardDefaultHasCables] = useState(true);
   // Bounding rect of the Yards Manager panel, captured on hover start, so the
   // preview popup can be portaled to <body> and centered over that panel
   // instead of being anchored to the hovered card inside its scrolling
@@ -332,11 +337,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [project.yards]);
 
   // Yards CRUD actions
-  const handleCreateYard = async () => {
-    const name = await promptText('Enter new yard name:', `Yard ${project.yards.length + 1}`, {
-      title: 'New Yard',
-      confirmLabel: 'Create',
-    });
+  const handleOpenCreateYard = () => {
+    setNewYardName(`Yard ${project.yards.length + 1}`);
+    setNewYardDefaultHasCables(true);
+    setIsCreatingYard(true);
+  };
+
+  const handleConfirmCreateYard = () => {
+    const name = newYardName.trim();
     if (!name) return;
 
     const newId = generateAssetId();
@@ -349,15 +357,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           id: newId,
           name,
           bins: [],
+          defaultHasCables: newYardDefaultHasCables,
         },
       ],
     }));
+    setIsCreatingYard(false);
   };
 
   const handleUpdateYardField = (yardId: number, key: 'name' | 'location' | 'notes', value: string) => {
     onUpdateProject((prev) => ({
       ...prev,
       yards: prev.yards.map((y) => (y.id === yardId ? { ...y, [key]: value } : y)),
+    }));
+  };
+
+  const handleUpdateYardDefaultHasCables = (yardId: number, value: boolean) => {
+    onUpdateProject((prev) => ({
+      ...prev,
+      yards: prev.yards.map((y) => (y.id === yardId ? { ...y, defaultHasCables: value } : y)),
     }));
   };
 
@@ -1019,7 +1036,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               )}
               <div className="relative group">
                 <button
-                  onClick={handleCreateYard}
+                  onClick={handleOpenCreateYard}
                   aria-label="Add Yard"
                   className="w-8 h-8 rounded-lg bg-gold hover:bg-gold-hover text-ink flex items-center justify-center transition-colors cursor-pointer shadow-sm"
                 >
@@ -1188,6 +1205,91 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
+      {/* New Yard Modal */}
+      {isCreatingYard && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 backdrop-blur-sm p-4"
+          onClick={() => setIsCreatingYard(false)}
+        >
+          <div
+            className="bg-surface rounded-2xl border border-line shadow-xl w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-sm font-black uppercase tracking-wider text-ink">New Yard</h3>
+              <button
+                onClick={() => setIsCreatingYard(false)}
+                className="p-1.5 text-ink-soft hover:text-ink rounded-lg hover:bg-paper transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1">
+                  Yard Name
+                </label>
+                <input
+                  type="text"
+                  value={newYardName}
+                  onChange={(e) => setNewYardName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleConfirmCreateYard();
+                  }}
+                  autoFocus
+                  aria-label="Yard Name"
+                  className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-xs text-ink focus:border-gold outline-none transition-all font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1.5">
+                  Bins in this yard have cables
+                </label>
+                <div className="grid grid-cols-2 gap-1 p-1 bg-paper border border-line rounded-xl shadow-inner">
+                  <button
+                    type="button"
+                    onClick={() => setNewYardDefaultHasCables(true)}
+                    className={`py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      newYardDefaultHasCables
+                        ? 'bg-gold text-ink font-black shadow-md border border-gold'
+                        : 'text-ink-soft hover:text-ink hover:bg-line/50'
+                    }`}
+                  >
+                    Yes, by default
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewYardDefaultHasCables(false)}
+                    className={`py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      !newYardDefaultHasCables
+                        ? 'bg-gold text-ink font-black shadow-md border border-gold'
+                        : 'text-ink-soft hover:text-ink hover:bg-line/50'
+                    }`}
+                  >
+                    No, by default
+                  </button>
+                </div>
+                <p className="text-[9px] text-ink-soft mt-1.5 leading-relaxed">
+                  Sets the starting value for new bins added to this yard. Each bin can still be switched
+                  individually afterward in the Site Planner.
+                </p>
+              </div>
+
+              <button
+                onClick={handleConfirmCreateYard}
+                disabled={!newYardName.trim()}
+                className="w-full py-2.5 bg-gold hover:bg-gold-hover disabled:opacity-40 disabled:cursor-not-allowed text-ink rounded-xl font-black text-xs uppercase transition-all cursor-pointer shadow-sm"
+              >
+                Create Yard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Yard Details Modal */}
       {editingYardId !== null && (() => {
         const editingYard = project.yards.find((y) => y.id === editingYardId);
@@ -1254,6 +1356,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     placeholder="e.g. NE 12-34-5 W3, or a full address"
                     className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-xs text-ink focus:border-gold outline-none transition-all font-semibold"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-ink-soft tracking-wider mb-1.5">
+                    New bins in this yard have cables
+                  </label>
+                  <div className="grid grid-cols-2 gap-1 p-1 bg-paper border border-line rounded-xl shadow-inner">
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateYardDefaultHasCables(editingYard.id, true)}
+                      className={`py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                        editingYard.defaultHasCables !== false
+                          ? 'bg-gold text-ink font-black shadow-md border border-gold'
+                          : 'text-ink-soft hover:text-ink hover:bg-line/50'
+                      }`}
+                    >
+                      Yes, by default
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateYardDefaultHasCables(editingYard.id, false)}
+                      className={`py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                        editingYard.defaultHasCables === false
+                          ? 'bg-gold text-ink font-black shadow-md border border-gold'
+                          : 'text-ink-soft hover:text-ink hover:bg-line/50'
+                      }`}
+                    >
+                      No, by default
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-ink-soft mt-1.5 leading-relaxed">
+                    Only affects new bins added from here on - existing bins keep whatever you've set
+                    individually in the Site Planner.
+                  </p>
                 </div>
 
                 <div>
